@@ -195,54 +195,52 @@ u32 LoadTexture2D(App* app, const char* filepath)
 }
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program) {
-    GLuint ret = 0; 
+    
     Submesh& submesh = mesh.submeshes[submeshIndex];
 
     for (u32 i = 0; i < (u32)submesh.vaos.size(); ++i) {
         if (submesh.vaos[i].programHandle == program.handle) {
-            ret = submesh.vaos[i].handle;
-			break;
+            return submesh.vaos[i].handle;
         }
     }
+    // Create a new VAO for this submesh
+	GLuint vaoHandle = 0;
+    glGenVertexArrays(1, &vaoHandle);
+    glBindVertexArray(vaoHandle);
 
-    if (ret == 0) {
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexBufferHandle);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indexBufferHandle);
 
-        // Create a new VAO for this submesh
-        glGenVertexArrays(1, &ret);
-        glBindVertexArray(ret);
+    for (u32 i = 0; i < program.vertexInputLayout.attributes.size(); i++) {
+        bool attributeWasLinked = false;
 
-        glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexBufferHandle);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indexBufferHandle);
+        for (u32 j = 0; j < submesh.vertexBufferLayout.attributes.size(); j++) {
+            if (program.vertexInputLayout.attributes[i].location == submesh.vertexBufferLayout.attributes[j].location) {
+                const u32 index = submesh.vertexBufferLayout.attributes[j].location;
+                const u32 ncomp = submesh.vertexBufferLayout.attributes[j].componentCount;
+                const u32 offset = submesh.vertexBufferLayout.attributes[j].offset + submesh.vertexOffset;
+                const u32 stride = submesh.vertexBufferLayout.stride;
+                glVertexAttribPointer(index, ncomp, GL_FLOAT, GL_FALSE, stride, (void*)(u64)offset);
+                glEnableVertexAttribArray(index);
 
-        for (u32 i = 0; i < program.vertexInputLayout.attributes.size(); i++) {
-            bool attributeWasLinked = false;
-
-            for (u32 j = 0; j < submesh.vertexBufferLayout.attributes.size(); j++) {
-                if (program.vertexInputLayout.attributes[i].location == submesh.vertexBufferLayout.attributes[j].location) {
-                    const u32 index = submesh.vertexBufferLayout.attributes[j].location;
-                    const u32 ncomp = submesh.vertexBufferLayout.attributes[j].componentCount;
-                    const u32 offset = submesh.vertexBufferLayout.attributes[j].offset + submesh.vertexOffset;
-                    const u32 stride = submesh.vertexBufferLayout.stride;
-                    glVertexAttribPointer(index, ncomp, GL_FLOAT, GL_FALSE, stride, (void*)(u64)offset);
-                    glEnableVertexAttribArray(index);
-
-                    attributeWasLinked = true;
-                    break;
-                }
+                attributeWasLinked = true;
+                break;
             }
-
-            assert(attributeWasLinked);
         }
-
-        glBindVertexArray(0);
-
-        // Store the new VAO in the submesh
-        Vao vao = { ret, program.handle };
-        submesh.vaos.push_back(vao);
+        assert(attributeWasLinked);
     }
+
+    glBindVertexArray(0);
+
+    // Store the new VAO in the submesh
+    Vao vao = { vaoHandle, program.handle };
+    submesh.vaos.push_back(vao);
     
-	return ret;
+    
+	return vaoHandle;
 }
+
+
 
 glm::mat4 TransformScale(const vec3& scaleFactors)
 {
@@ -256,6 +254,19 @@ glm::mat4 TransformPositionScale(const vec3& position, const vec3& scaleFactors)
     return ReturnValue;
 }
 
+glm::mat4 TransformPositionRotationScale(const vec3& position, const vec3& rotation, const vec3& scaleFactors)
+{
+	glm::mat4 ReturnValue = glm::translate(position);
+
+	ReturnValue = glm::rotate(ReturnValue, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+	ReturnValue = glm::rotate(ReturnValue, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+	ReturnValue = glm::rotate(ReturnValue, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	ReturnValue = glm::scale(ReturnValue, scaleFactors);
+
+	return ReturnValue;
+}
+
 
 
 void Init(App* app)
@@ -265,27 +276,45 @@ void Init(App* app)
     InitFramebuffers(app);
 	InitCamera(app);
 
+    app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
+	app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
+	app->blackTexIdx = LoadTexture2D(app, "color_black.png");
+	app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
+
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
     app->localUniformBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
 
-    // Load textures
+    // Load primitive
+    for (int i = 0; i < app->primitives.size(); ++i) {
+		std::string path = "Primitives/" + app->primitives[i] + ".obj";
+		u32 primitiveIdx = ModelHelper::LoadModel(app, path.c_str());
+		app->primitiveIdxs.push_back(primitiveIdx);
+    }
+
+    // Load patrick model
     u32 patrickModel = ModelHelper::LoadModel(app, "Patrick/Patrick.obj");
-    app->entities.push_back({ glm::identity<glm::mat4>(), patrickModel, 0,0 });
-    //app->entities.push_back({ glm::identity<glm::mat4>(), patrickModel, 0,0 });
+    Entity e; 
+	e.position = vec3(0.0f, 0.0f, 0.0f);
+	e.rotation = vec3(0.0f, 0.0f, 0.0f);
+	e.scale = vec3(1.0f, 1.0f, 1.0f);
+	e.modelIndex = patrickModel;
+	e.worldMatrix = TransformPositionRotationScale(e.position, e.rotation, e.scale);
+	e.name = "Patrick";
+	app->entities.push_back(e);
 
     // Lights
-    app->lights.push_back({ LightType::LightType_Directional, vec3(1.0, 1.0, 1.0), vec3(1.0, -1.0, 1.0), vec3(0.0, 0.0, 0.0) });
-    app->lights.push_back({ LightType::LightType_Point, vec3(1.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), vec3(0.0, 1.0, 1.0) });
+	app->lights.push_back(Light(LightType_Directional, vec3(1.0f, 1.0f, 1.0f), vec3(-1.0f, -1.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f), 1.0f, "Directional Light"));
+	app->lights.push_back(Light(LightType_Point, vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(2.0f, 2.0f, 2.0f), 1.0f, "Point Light"));
+
 
     // Load shaders
     app->forwardProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
+	app->texturedMeshProgram_uTexture = glGetUniformLocation(app->programs[app->forwardProgramIdx].handle, "uTexture");
+
 	app->texturedMeshProgramIdx = LoadProgram(app, "shaders.glsl", "GEOMETRY_RENDER");
 	app->lightProgramIdx = LoadProgram(app, "shaders.glsl", "LIGHTING_RENDER");
 	
-
-	 
-
     app->mode = Mode_Forward;
 }
 
@@ -312,8 +341,7 @@ void InitBuffers(App* app)
 	glEnableVertexAttribArray(1);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
 	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	
 }
 
 void InitFramebuffers(App* app)
@@ -366,6 +394,18 @@ void InitFramebuffers(App* app)
 
 	GLuint drawBuffersLight[] = { GL_COLOR_ATTACHMENT0 };
 	glDrawBuffers(ARRAY_COUNT(drawBuffersLight), drawBuffersLight);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Forward buffer
+	glGenFramebuffers(1, &app->forwardBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, app->forwardBuffer);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->mainAttachmentTexture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthLightAttachmentHandle, 0);
+
+	CheckFramebufferStatus();
+
+	GLuint drawBuffersForward[] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(ARRAY_COUNT(drawBuffersForward), drawBuffersForward);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	// Set default attachment
@@ -459,26 +499,10 @@ void Gui(App* app)
     // Inspector
 
     ImGui::Begin("Inspector");
-    
+    GuiAddPrimitive(app);
+    GuiAddLights(app);
+	ImGui::Separator();
     // TODO: Add lights and primitives from inspector
-
-    ImGui::NewLine();
-	ImGui::Text("Select buffer");
-    if (ImGui::BeginCombo("##Attachment", app->currentAttachment.c_str())) {
-        for (auto it : app->renderSelector) {
-            if (ImGui::Selectable(it.first.c_str(), app->currentAttachment == it.first)) {
-                app->currentAttachment = it.first;
-            }
-			if (app->currentAttachment == it.first) {
-				ImGui::SetItemDefaultFocus();
-			}
-        }
-		ImGui::EndCombo();
-    }
-
-    ImGui::NewLine();
-    ImGui::Separator();
-
     ImGui::Text("Select mode");
     const char* modes[] = { "Textured Quad", "Forward", "Deferred" };
     int currentMode = (int)app->mode;
@@ -496,11 +520,33 @@ void Gui(App* app)
         }
         ImGui::EndCombo();
     }
-	ImGui::End();
+    ImGui::Separator();
 
-	
+    if (app->mode == Mode_Deferred) {
+        ImGui::Text("Select buffer");
+        if (ImGui::BeginCombo("##Attachment", app->currentAttachment.c_str())) {
+            for (auto it : app->renderSelector) {
+                if (ImGui::Selectable(it.first.c_str(), app->currentAttachment == it.first)) {
+                    app->currentAttachment = it.first;
+                }
+                if (app->currentAttachment == it.first) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::Separator();
+    }
+
+    GuiInspectorEntities(app);
+	GuiInspectorLights(app);
+    ImGui::End();
+
     if (ImGui::Begin("Scene")) {
-        ImGui::Image((ImTextureID)app->renderSelector[app->currentAttachment], ImGui::GetContentRegionAvail(), ImVec2(0, 1), ImVec2(1, 0));
+        if(app->mode == Mode_Deferred)
+            ImGui::Image((ImTextureID)app->renderSelector[app->currentAttachment], ImGui::GetContentRegionAvail(), ImVec2(0, 1), ImVec2(1, 0));
+		else if (app->mode == Mode_Forward)
+			ImGui::Image((ImTextureID)app->mainAttachmentTexture, ImGui::GetContentRegionAvail(), ImVec2(0, 1), ImVec2(1, 0));
     }
 	ImGui::End();
 
@@ -536,12 +582,7 @@ void Render(App* app)
                 // - bind the vao
                 // - glDrawElements() !!!
         case Mode_TexturedQuad:
-
         {
-
-            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 
             Program& texturedGeometryProgram = app->programs[app->texturedMeshProgramIdx];
             glUseProgram(texturedGeometryProgram.handle);
@@ -565,8 +606,10 @@ void Render(App* app)
         case Mode_Forward:
         {
             // Geometry Pass
+			glBindFramebuffer(GL_FRAMEBUFFER, app->forwardBuffer);
+            glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
 			glEnable(GL_DEPTH_TEST);
 
             Program& forwardProgram = app->programs[app->forwardProgramIdx];
@@ -577,7 +620,7 @@ void Render(App* app)
             for (auto it = app->entities.begin(); it != app->entities.end(); ++it) {
                 glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->localUniformBuffer.handle, it->localParamsOffset, it->localParamsSize);
 
-                Model& model = app->models[app->patrickModel];
+                Model& model = app->models[it->modelIndex];
                 Mesh& mesh = app->meshes[model.meshIdx];
 
                 for (u32 i = 0; i < mesh.submeshes.size(); ++i) {
@@ -586,6 +629,7 @@ void Render(App* app)
 
                     u32 submeshMaterialIdx = model.materialIdx[i];
                     Material& submeshMaterial = app->materials[submeshMaterialIdx];
+
 
                     glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
@@ -599,6 +643,7 @@ void Render(App* app)
             }
 
 			glUseProgram(0);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         }
         break;
@@ -606,6 +651,7 @@ void Render(App* app)
         {
 			// Geometry Pass
 			glBindFramebuffer(GL_FRAMEBUFFER, app->gBuffer);
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glEnable(GL_DEPTH_TEST);
 
@@ -693,7 +739,7 @@ void AlignUniformBuffers(App* app)
 
 		Light& light = app->lights[i];
 		PushUInt(app->localUniformBuffer, light.type);
-		PushVec3(app->localUniformBuffer, light.color);
+		PushVec3(app->localUniformBuffer, light.color * light.intensity);
 		PushVec3(app->localUniformBuffer, light.direction);
 		PushVec3(app->localUniformBuffer, light.position);
     }
@@ -724,7 +770,7 @@ void InitCamera(App* app) {
     app->camera.zFar = 100.0f;
 	app->camera.fov = 60.0f;
 
-	app->camera.position = vec3(5.0, 5.0, 5.0);
+	app->camera.position = vec3(5.0, 0.0, 5.0);
 	app->camera.front = glm::normalize(vec3(-25.0f, -2.0f, -30.0f));
 	app->camera.up = vec3(0.0f, 1.0f, 0.0f);
 	app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.up));
@@ -806,4 +852,110 @@ void CameraLookAt(App* app)
 		app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.up));
 		
     }
+}
+
+void GuiAddLights(App* app) 
+{
+    if (ImGui::BeginMenu("Add light")) {
+        if (ImGui::MenuItem("Directional Light", nullptr)) {
+			app->directionalLightCount++;
+			std::string name = "Directional Light " + std::to_string(app->directionalLightCount);
+			app->lights.push_back({ LightType::LightType_Directional, vec3(1.0, 1.0, 1.0), vec3(1.0, -1.0, 1.0), vec3(0.0, 0.0, 0.0), 1.0, name });
+        }
+        if (ImGui::MenuItem("Point Light", nullptr)) {
+			app->pointLightCount++;
+			std::string name = "Point Light " + std::to_string(app->pointLightCount);
+			app->lights.push_back({ LightType::LightType_Point, vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, 1.0), vec3(0.0, 1.0, 1.0), 1.0, name });
+        }
+
+        ImGui::EndMenu();
+    }
+}
+
+void GuiInspectorLights(App* app) 
+{
+    for (int i = 0; i < app->lights.size(); ++i) {
+        ImGui::PushID(app->lights[i].name.c_str());
+        if (ImGui::CollapsingHeader(app->lights[i].name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (app->lights[i].type == LightType_Directional) {
+                ImGui::Text("Position: ");
+				ImGui::DragFloat3("##Position", &app->lights[i].position[0], 0.1f, true);
+				ImGui::Text("Direction: ");
+				ImGui::DragFloat3("##Direction", &app->lights[i].direction[0], 0.1f, true);
+			}
+            else if (app->lights[i].type == LightType_Point) {
+                ImGui::Text("Position: ");
+				ImGui::DragFloat3("##Position", &app->lights[i].position[0], 0.1f, true);
+                ImGui::DragFloat("##Intensity", &app->lights[i].intensity, 0.1f, 0.00001f, 1.0f);
+            }
+
+			ImGui::Text("Color: ");
+			ImGui::ColorEdit3("##Color", &app->lights[i].color[0], ImGuiColorEditFlags_Float);
+        }
+		ImGui::PopID();
+    }
+}
+
+void GuiInspectorEntities(App* app) {
+    
+    for (int i = 0; i < app->entities.size(); ++i) 
+    {
+		ImGui::PushID(app->entities[i].name.c_str());
+        if (ImGui::CollapsingHeader(app->entities[i].name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+			ImGui::Text("Position: ");
+            if (ImGui::DragFloat3("##Position", &app->entities[i].position[0], 0.5f, true)) 
+            {
+				app->entities[i].worldMatrix = TransformPositionRotationScale(app->entities[i].position, app->entities[i].rotation, app->entities[i].scale);
+            }
+			ImGui::Text("Rotation: ");
+            if (ImGui::DragFloat3("##Rotation", &app->entities[i].rotation[0], 1.0f, 0.0f, 360.0f)) 
+            {
+				app->entities[i].worldMatrix = TransformPositionRotationScale(app->entities[i].position, app->entities[i].rotation, app->entities[i].scale);
+            }
+			ImGui::Text("Scale: ");
+            if (ImGui::DragFloat3("##Scale", &app->entities[i].scale[0], 0.01f, 0.00001f, 10000.0f)) 
+            {
+				app->entities[i].worldMatrix = TransformPositionRotationScale(app->entities[i].position, app->entities[i].rotation, app->entities[i].scale);
+            }
+        }
+		ImGui::PopID();
+    }
+}
+
+void GuiAddPrimitive(App* app) 
+{
+    if (ImGui::BeginMenu("Add primitive")) 
+    {
+        for (size_t i = 0; i < app->primitiveIdxs.size(); ++i) 
+        {
+            if (ImGui::MenuItem(app->primitives[i].c_str(), nullptr)) 
+            {
+                app->primitiveCount++;
+                std::string name = app->primitives[i].c_str();
+				name += " " + std::to_string(app->primitiveCount);
+                Entity e; 
+				e.modelIndex = app->primitiveIdxs[i];
+				e.position = vec3(0.0f, 0.0f, 0.0f);
+				e.rotation = vec3(0.0f, 0.0f, 0.0f);
+				e.scale = vec3(1.0f, 1.0f, 1.0f);
+				e.worldMatrix = TransformPositionRotationScale(e.position, e.rotation, e.scale);
+				e.name = name;
+
+                // Asignar un material por defecto si no existe
+                Model& model = app->models[e.modelIndex];
+                for (u32 j = 0; j < model.materialIdx.size(); ++j) {
+                    if (model.materialIdx[j] == UINT32_MAX) {
+                        Material defaultMaterial = {};
+                        defaultMaterial.albedoTextureIdx = app->normalTexIdx; 
+                        model.materialIdx[j] = app->materials.size();
+                        app->materials.push_back(defaultMaterial);
+                    }
+                }
+
+				app->entities.push_back(e);
+            }
+        }
+        ImGui::EndMenu();
+    }
+	
 }

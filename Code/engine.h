@@ -160,6 +160,12 @@ struct Entity {
     u32 modelIndex; 
     u32 localParamsOffset; 
 	u32 localParamsSize;
+    std::string name;
+
+    // Transform 
+	vec3 position;
+	vec3 rotation;
+	vec3 scale;
 };
 enum LightType
 {
@@ -173,6 +179,19 @@ struct Light
     vec3 color;
     vec3 direction;
 	vec3 position;
+	float intensity;
+    std::string name; 
+
+    // Constructor
+    Light(LightType type, vec3 color, vec3 direction, vec3 position, float intensity, std::string name) 
+    {
+		this->type = type;
+		this->color = color;
+		this->direction = direction;
+		this->position = position;
+		this->intensity = intensity;
+		this->name = name;
+    }
 };
 
 
@@ -213,7 +232,6 @@ struct App
     u32 blackTexIdx;
     u32 normalTexIdx;
     u32 magentaTexIdx;
-	u32 patrickTexIdx;
  
 
     // Mode
@@ -252,12 +270,24 @@ struct App
     GLuint globalParamsOffset;
 	GLuint globalParamsSize;
     
-	// Framebuffers
+	// Framebuffers for deferred
     GLuint gBuffer;
 	GLuint lightBuffer;
 
+    // Framebuffer for forward
+    GLuint forwardBuffer; 
+
     //Camera
     Camera camera; 	
+
+    // Counters
+	int directionalLightCount = 0;
+	int pointLightCount = 0;
+    int primitiveCount = 0;
+	
+    // primitives
+    std::vector<std::string> primitives = {"Cube", "Sphere","Cone", "Cylinder","Plane", "Torus" };
+	std::vector<u32> primitiveIdxs;
 };
 
 void Init(App* app);
@@ -287,3 +317,11 @@ void CameraLookAt(App* app);
 void CheckFramebufferStatus();
 
 GLuint CreateTextureAttachment(GLenum internalFormat, GLenum format, GLenum type, int width, int height);
+
+void GuiInspectorLights(App* app);
+
+void GuiAddLights(App* app);
+
+void GuiInspectorEntities(App* app);
+
+void GuiAddPrimitive(App* app);

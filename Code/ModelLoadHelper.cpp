@@ -104,7 +104,7 @@ namespace ModelHelper {
         material->Get(AI_MATKEY_COLOR_EMISSIVE, emissiveColor);
         material->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
         material->Get(AI_MATKEY_SHININESS, shininess);
-
+        ELOG(name.C_Str());
         myMaterial.name = name.C_Str();
         myMaterial.albedo = vec3(diffuseColor.r, diffuseColor.g, diffuseColor.b);
         myMaterial.emissive = vec3(emissiveColor.r, emissiveColor.g, emissiveColor.b);
@@ -146,7 +146,7 @@ namespace ModelHelper {
             String filepath = MakePath(directory, filename);
             myMaterial.bumpTextureIdx = LoadTexture2D(app, filepath.str);
         }
-
+        //ELOG("Material in %s", directory.str); 
         //myMaterial.createNormalFromBump();
     }
 
