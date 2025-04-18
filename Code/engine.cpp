@@ -303,17 +303,41 @@ void Init(App* app)
 	e.name = "Patrick";
 	app->entities.push_back(e);
 
+    // Load plane and sphere 
+	Entity plane;
+	plane.position = vec3(0.0f, 0.0f, 0.0f);
+	plane.rotation = vec3(0.0f, 0.0f, 0.0f);
+	plane.scale = vec3(20.0f, 1.0f, 20.0f);
+	plane.modelIndex = app->primitiveIdxs[4];
+	plane.worldMatrix = TransformPositionRotationScale(plane.position, plane.rotation, plane.scale);
+	plane.name = "Plane";
+	app->entities.push_back(plane);
+
     // Lights
 	app->lights.push_back(Light(LightType_Directional, vec3(1.0f, 1.0f, 1.0f), vec3(-1.0f, -1.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f), 1.0f, "Directional Light"));
 	app->lights.push_back(Light(LightType_Point, vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(2.0f, 2.0f, 2.0f), 1.0f, "Point Light"));
 
 
     // Load shaders
+    // Forward program and uniforms
     app->forwardProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
-	app->texturedMeshProgram_uTexture = glGetUniformLocation(app->programs[app->forwardProgramIdx].handle, "uTexture");
+	app->forwardProgram_uTexture = glGetUniformLocation(app->programs[app->forwardProgramIdx].handle, "uTexture");
 
+	// Deferred programs and uniforms
+	// Geometry pass + Lighting pass + Debug lights programs
 	app->texturedMeshProgramIdx = LoadProgram(app, "shaders.glsl", "GEOMETRY_RENDER");
-	app->lightProgramIdx = LoadProgram(app, "shaders.glsl", "LIGHTING_RENDER");
+    app->texturedMeshProgram_uTexture = glGetUniformLocation(app->programs[app->texturedMeshProgramIdx].handle, "uTexture");
+	app->texturedMeshProgram_uNear = glGetUniformLocation(app->programs[app->texturedMeshProgramIdx].handle, "uNear");
+	app->texturedMeshProgram_uFar = glGetUniformLocation(app->programs[app->texturedMeshProgramIdx].handle, "uFar");
+
+    app->lightProgramIdx = LoadProgram(app, "shaders.glsl", "LIGHTING_RENDER");
+	app->lightProgram_uAlbedo = glGetUniformLocation(app->programs[app->lightProgramIdx].handle, "uAlbedo");
+	app->lightProgram_uNormal = glGetUniformLocation(app->programs[app->lightProgramIdx].handle, "uNormal");
+	app->lightProgram_uPosition = glGetUniformLocation(app->programs[app->lightProgramIdx].handle, "uPosition");
+
+    app->debugLightProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_LIGHTS");
+	app->uProjectionMatrix = glGetUniformLocation(app->programs[app->debugLightProgramIdx].handle, "uProjectionMatrix");
+	app->uLightColor = glGetUniformLocation(app->programs[app->debugLightProgramIdx].handle, "uLightColor");
 	
     app->mode = Mode_Forward;
 }
@@ -633,7 +657,7 @@ void Render(App* app)
 
                     glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
-                    glUniform1i(app->texturedMeshProgram_uTexture, 0);
+                    glUniform1i(app->forwardProgram_uTexture, 0);
 
                     Submesh& submesh = mesh.submeshes[i];
                     glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
@@ -673,9 +697,9 @@ void Render(App* app)
 
 					glActiveTexture(GL_TEXTURE0);
 					glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
-					glUniform1i(glGetUniformLocation(texturedMeshProgram.handle, "uTexture"), 0);
-					glUniform1f(glGetUniformLocation(texturedMeshProgram.handle, "uNear"), app->camera.zNear);
-					glUniform1f(glGetUniformLocation(texturedMeshProgram.handle, "uFar"), app->camera.zFar);
+					glUniform1i(app->texturedMeshProgram_uTexture, 0);
+					glUniform1f(app->texturedMeshProgram_uNear, app->camera.zNear);
+					glUniform1f(app->texturedMeshProgram_uFar, app->camera.zFar);
 
 					Submesh& submesh = mesh.submeshes[i];
 					glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
@@ -697,9 +721,9 @@ void Render(App* app)
 
 			glBindVertexArray(app->vao);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-			glUniform1i(glGetUniformLocation(lightProgram.handle, "uAlbedo"), 0);
-			glUniform1i(glGetUniformLocation(lightProgram.handle, "uPosition"), 1);
-			glUniform1i(glGetUniformLocation(lightProgram.handle, "uNormal"), 2);
+			glUniform1i(app->lightProgram_uAlbedo, 0);
+			glUniform1i(app->lightProgram_uPosition, 1);
+			glUniform1i(app->lightProgram_uNormal, 2);
 
 			glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, app->colorAttachmentTexture);
@@ -718,6 +742,37 @@ void Render(App* app)
 			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, app->lightBuffer);
 
 			glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.y, 0, 0, app->displaySize.x, app->displaySize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+			glUseProgram(0);
+
+            // Show lights for debug
+			Program& debugLightProgram = app->programs[app->debugLightProgramIdx];
+			glUseProgram(debugLightProgram.handle);
+            for (int i = 0; i < app->lights.size(); ++i) {
+				Light& light = app->lights[i];
+				u32 meshIdx = 0;
+				float scale = 1.0f;
+                if (light.type == LightType_Directional) 
+                {
+					meshIdx = app->primitiveIdxs[0];    
+					scale = 0.5f;
+                }
+                else 
+                {
+					meshIdx = app->primitiveIdxs[1];
+					scale = 0.5f;
+                }
+				Mesh& mesh = app->meshes[app->models[meshIdx].meshIdx];
+				GLuint vao = FindVAO(mesh, 0, debugLightProgram);
+
+				glm::mat4 modelMatrix = TransformPositionRotationScale(light.position, light.direction, vec3(scale));
+				modelMatrix = app->camera.projection * app->camera.view * modelMatrix;
+				glBindVertexArray(vao);
+				glUniformMatrix4fv(app->uProjectionMatrix, 1, GL_FALSE, &modelMatrix[0][0]);
+				glUniform3f(app->uLightColor, light.color.r, light.color.g, light.color.b);
+
+				glDrawElements(GL_TRIANGLES, mesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
+				glBindVertexArray(0);
+            }
 			glUseProgram(0);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }

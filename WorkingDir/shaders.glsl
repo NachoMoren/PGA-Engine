@@ -57,7 +57,7 @@
 		vTexCoord = aTexCoord;
 		vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
 		vNormal = vec3(uWorldMatrix * vec4(aNormal, 0.0));
-	gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
+		gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 	}
 
 	#elif defined(FRAGMENT) ///////////////////////////////////////////////
@@ -77,7 +77,7 @@
 
 	float LinearizeDepth(float depth)
 	{
-		float z = depth * 2.0 - 1.0; // from [0,1] to [-1,1]
+		float z = depth * 2.0 - 1.0; 
 		return (2.0 * uNear * uFar) / (uFar + uNear - z * (uFar - uNear));
 	}
 
@@ -86,7 +86,8 @@
 		oColor = texture(uTexture, vTexCoord);
 		oPosition = vec4(vPosition, 1.0);
 		oNormal = vec4(normalize(vNormal), 1.0);
-	
+
+
 		float depth = LinearizeDepth(gl_FragCoord.z) / uFar;
 		oDepth = vec4(vec3(depth),1.0);
 	}
@@ -229,6 +230,32 @@
 	}
 
 	#endif
+#endif
+
+#ifdef SHOW_LIGHTS
+
+	#if defined(VERTEX) ///////////////////////////////////////////////////
+
+	layout(location = 0) in vec3 aPosition;
+
+	uniform mat4 uProjectionMatrix;
+
+	void main()
+	{
+		gl_Position = uProjectionMatrix * vec4(aPosition, 1.0);
+	}	
+
+	#elif defined(FRAGMENT) ///////////////////////////////////////////////
+
+	layout(location = 0) out vec4 oColor;
+	uniform vec3 uLightColor;
+
+	void main()
+	{
+		oColor = vec4(uLightColor, 1.0);
+	}
+	#endif
+
 #endif
 
 ///////////////////////////////////////////////////////////////////////

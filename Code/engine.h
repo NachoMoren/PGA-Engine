@@ -222,6 +222,7 @@ struct App
     // program indices
     u32 lightProgramIdx;
     u32 texturedMeshProgramIdx;
+	u32 debugLightProgramIdx;
 	u32 forwardProgramIdx;
 
     u32 patrickModel; 
@@ -244,7 +245,16 @@ struct App
 
     // Location of the texture uniform in the textured quad shader
     GLuint programUniformTexture;
+	GLuint forwardProgram_uTexture;
 	GLuint texturedMeshProgram_uTexture;
+	GLuint texturedMeshProgram_uNear;
+	GLuint texturedMeshProgram_uFar;
+    GLuint lightProgram_uAlbedo; 
+	GLuint lightProgram_uNormal;
+	GLuint lightProgram_uPosition;
+    GLuint uProjectionMatrix; 
+	GLuint uLightColor;
+
 
 	// Color attachment of the framebuffer
 	GLuint colorAttachmentTexture;
