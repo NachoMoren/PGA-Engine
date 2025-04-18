@@ -537,7 +537,7 @@ void Gui(App* app)
         }
         ImGui::Separator();
     }
-
+	GuiInspectorCamera(app);
     GuiInspectorEntities(app);
 	GuiInspectorLights(app);
     ImGui::End();
@@ -770,8 +770,8 @@ void InitCamera(App* app) {
     app->camera.zFar = 100.0f;
 	app->camera.fov = 60.0f;
 
-	app->camera.position = vec3(5.0, 0.0, 5.0);
-	app->camera.front = glm::normalize(vec3(-25.0f, -2.0f, -30.0f));
+	app->camera.position = vec3(1.1, 10.5, 15.39);
+	app->camera.front = glm::normalize(vec3(-0.1f, -0.36f, -0.9f));
 	app->camera.up = vec3(0.0f, 1.0f, 0.0f);
 	app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.up));
 
@@ -958,4 +958,17 @@ void GuiAddPrimitive(App* app)
         ImGui::EndMenu();
     }
 	
+}
+
+void GuiInspectorCamera(App* app) 
+{
+    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) 
+    {
+		ImGui::Text("Position: ");
+		ImGui::DragFloat3("##Position", &app->camera.position[0], 0.5f, true);
+		ImGui::Text("Front: ");
+		ImGui::DragFloat3("##Front", &app->camera.front[0], 0.5f, true);
+		ImGui::Text("Speed: ");
+		ImGui::DragFloat("##Speed", &app->camera.speed, 0.1f, 0.00001f, 10000.0f);
+    }
 }

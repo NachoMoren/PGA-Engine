@@ -325,3 +325,5 @@ void GuiAddLights(App* app);
 void GuiInspectorEntities(App* app);
 
 void GuiAddPrimitive(App* app);
+
+void GuiInspectorCamera(App* app);
