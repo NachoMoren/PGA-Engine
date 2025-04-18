@@ -295,7 +295,7 @@ void Init(App* app)
     // Load patrick model
     u32 patrickModel = ModelHelper::LoadModel(app, "Patrick/Patrick.obj");
     Entity e; 
-	e.position = vec3(0.0f, 0.0f, 0.0f);
+	e.position = vec3(0.0f, 5.0f, 0.0f);
 	e.rotation = vec3(0.0f, 0.0f, 0.0f);
 	e.scale = vec3(1.0f, 1.0f, 1.0f);
 	e.modelIndex = patrickModel;
