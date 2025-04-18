@@ -6,6 +6,9 @@
 
 #include "platform.h"
 #include <glad/glad.h>
+#include <unordered_map>
+#include "BufferManagement.h"
+#include "ModelLoadHelper.h"
 
 typedef glm::vec2  vec2;
 typedef glm::vec3  vec3;
@@ -20,6 +23,26 @@ struct Image
     ivec2 size;
     i32   nchannels;
     i32   stride;
+};
+
+struct Camera
+{
+    glm::mat4 projection;
+    glm::mat4 view;
+
+    glm::vec3 position;
+	glm::vec3 front;
+	glm::vec3 up;
+	glm::vec3 right;
+
+    float yaw; 
+	float pitch;
+    float speed; 
+	float sensitivity;
+    float aspectRatio;
+    float zNear;
+    float zFar;
+	float fov;
 };
 
 struct Texture
@@ -66,8 +89,8 @@ struct VertexShaderAttribute
 enum Mode
 {
     Mode_TexturedQuad,
-	Mode_Forward,
-	Mode_Deferred,
+    Mode_Forward,
+    Mode_Deferred
 };
 
 struct VertexShaderLayout
@@ -121,16 +144,37 @@ struct VertexV3V2
 };
 
 const VertexV3V2 vertices[] = {
-    {glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0.0, 0.0)}, // bottom-left vertex
-    {glm::vec3(0.5, -0.5, 0.0), glm::vec2(1.0, 0.0)}, // bottom-right vertex
-    {glm::vec3(0.5, 0.5, 0.0), glm::vec2(1.0, 1.0)}, // top-right vertex
-    {glm::vec3(-0.5, 0.5, 0.0), glm::vec2(0.0, 1.0)}, // top-left vertex
+    {glm::vec3(-1.0, -1.0, 0.0), glm::vec2(0.0, 0.0)}, // bottom-left vertex
+    {glm::vec3(1.0, -1.0, 0.0), glm::vec2(1.0, 0.0)}, // bottom-right vertex
+    {glm::vec3(1.0, 1.0, 0.0), glm::vec2(1.0, 1.0)}, // top-right vertex
+    {glm::vec3(-1.0, 1.0, 0.0), glm::vec2(0.0, 1.0)}, // top-left vertex
 };
 
-const u32 indices[] = {
+const u16 indices[] = {
 	0, 1, 2,
 	0, 2, 3
 };
+
+struct Entity {
+    glm::mat4 worldMatrix; 
+    u32 modelIndex; 
+    u32 localParamsOffset; 
+	u32 localParamsSize;
+};
+enum LightType
+{
+	LightType_Directional,
+	LightType_Point
+};
+
+struct Light
+{
+	LightType type;
+    vec3 color;
+    vec3 direction;
+	vec3 position;
+};
+
 
 struct App
 {
@@ -153,10 +197,13 @@ struct App
     std::vector<Mesh>       meshes;
     std::vector<Model>      models;
     std::vector<Program>    programs;
+    std::vector<Entity>     entities;
+    std::vector<Light>      lights;
 
     // program indices
-    u32 texturedGeometryProgramIdx;
+    u32 lightProgramIdx;
     u32 texturedMeshProgramIdx;
+	u32 forwardProgramIdx;
 
     u32 patrickModel; 
     
@@ -181,13 +228,45 @@ struct App
     GLuint programUniformTexture;
 	GLuint texturedMeshProgram_uTexture;
 
+	// Color attachment of the framebuffer
+	GLuint colorAttachmentTexture;
+	GLuint depthAttachmentTexture;
+	GLuint normalAttachmentTexture;
+	GLuint positionAttachmentTexture;
+	GLuint mainAttachmentTexture;
+
+    // Render selector
+	std::unordered_map<std::string, GLuint> renderSelector;
+    std::string currentAttachment = "Main";
+
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
 
     std::string openGLInfo;
+
+    // Entity 
+	GLint maxUniformBufferSize;
+	GLint uniformBlockAlignment;
+	Buffer localUniformBuffer;
+
+    GLuint globalParamsOffset;
+	GLuint globalParamsSize;
+    
+	// Framebuffers
+    GLuint gBuffer;
+	GLuint lightBuffer;
+
+    //Camera
+    Camera camera; 	
 };
 
 void Init(App* app);
+
+void InitFramebuffers(App* app);
+
+void InitBuffers(App* app);
+
+void InitOpenGLInfo(App* app);
 
 void Gui(App* app);
 
@@ -196,3 +275,15 @@ void Update(App* app);
 void Render(App* app);
 
 u32 LoadTexture2D(App* app, const char* filepath);
+
+void InitCamera(App* app);
+
+void AlignUniformBuffers(App* app);
+
+void CameraMovement(App* app);
+
+void CameraLookAt(App* app);
+
+void CheckFramebufferStatus();
+
+GLuint CreateTextureAttachment(GLenum internalFormat, GLenum format, GLenum type, int width, int height);

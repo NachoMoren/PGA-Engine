@@ -54,11 +54,13 @@ void OnGlfwMouseEvent(GLFWwindow* window, int button, int event, int modifiers)
             switch (button) {
                 case GLFW_MOUSE_BUTTON_RIGHT: app->input.mouseButtons[RIGHT] = BUTTON_PRESS; break;
                 case GLFW_MOUSE_BUTTON_LEFT:  app->input.mouseButtons[LEFT]  = BUTTON_PRESS; break;
+				case GLFW_MOUSE_BUTTON_MIDDLE: app->input.mouseButtons[MIDDLE] = BUTTON_PRESS; break;
             } break;
         case GLFW_RELEASE:
             switch (button) {
                 case GLFW_MOUSE_BUTTON_RIGHT: app->input.mouseButtons[RIGHT] = BUTTON_RELEASE; break;
                 case GLFW_MOUSE_BUTTON_LEFT:  app->input.mouseButtons[LEFT]  = BUTTON_RELEASE; break;
+				case GLFW_MOUSE_BUTTON_MIDDLE: app->input.mouseButtons[MIDDLE] = BUTTON_RELEASE; break;
             } break;
     }
 }
@@ -66,6 +68,10 @@ void OnGlfwMouseEvent(GLFWwindow* window, int button, int event, int modifiers)
 void OnGlfwScrollEvent(GLFWwindow* window, double xoffset, double yoffset)
 {
     // Nothing do yet... maybe zoom in/out in the future?
+	App* app = (App*)glfwGetWindowUserPointer(window);
+	app->input.mouseScroll.x = xoffset;
+	app->input.mouseScroll.y = yoffset;
+	
 }
 
 void OnGlfwKeyboardEvent(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -86,6 +92,7 @@ void OnGlfwKeyboardEvent(GLFWwindow* window, int key, int scancode, int action, 
         case GLFW_KEY_S: key = K_S; break; case GLFW_KEY_T: key = K_T; break; case GLFW_KEY_U: key = K_U; break;
         case GLFW_KEY_V: key = K_V; break; case GLFW_KEY_W: key = K_W; break; case GLFW_KEY_X: key = K_X; break;
         case GLFW_KEY_Y: key = K_Y; break; case GLFW_KEY_Z: key = K_Z; break;
+		case GLFW_KEY_LEFT_SHIFT: key = K_SHIFT; break;
         case GLFW_KEY_ESCAPE: key = K_ESCAPE; break;
         case GLFW_KEY_ENTER:  key = K_ENTER; break;
     }
@@ -213,25 +220,25 @@ int main()
         Gui(&app);
         ImGui::Render();
 
-        // Clear input state if required by ImGui
-        if (ImGui::GetIO().WantCaptureKeyboard)
-            for (u32 i = 0; i < KEY_COUNT; ++i)
-                app.input.keys[i] = BUTTON_IDLE;
+        //// Clear input state if required by ImGui
+        //if (ImGui::GetIO().WantCaptureKeyboard)
+        //    for (u32 i = 0; i < KEY_COUNT; ++i)
+        //        app.input.keys[i] = BUTTON_IDLE;
 
-        if (ImGui::GetIO().WantCaptureMouse)
-            for (u32 i = 0; i < MOUSE_BUTTON_COUNT; ++i)
-                app.input.mouseButtons[i] = BUTTON_IDLE;
+        //if (ImGui::GetIO().WantCaptureMouse)
+        //    for (u32 i = 0; i < MOUSE_BUTTON_COUNT; ++i)
+        //        app.input.mouseButtons[i] = BUTTON_IDLE;
 
         // Update
         Update(&app);
 
         // Transition input key/button states
-        if (!ImGui::GetIO().WantCaptureKeyboard)
+       // if (!ImGui::GetIO().WantCaptureKeyboard)
             for (u32 i = 0; i < KEY_COUNT; ++i)
                 if      (app.input.keys[i] == BUTTON_PRESS)   app.input.keys[i] = BUTTON_PRESSED;
                 else if (app.input.keys[i] == BUTTON_RELEASE) app.input.keys[i] = BUTTON_IDLE;
 
-        if (!ImGui::GetIO().WantCaptureMouse)
+        //if (!ImGui::GetIO().WantCaptureMouse)
             for (u32 i = 0; i < MOUSE_BUTTON_COUNT; ++i)
                 if      (app.input.mouseButtons[i] == BUTTON_PRESS)   app.input.mouseButtons[i] = BUTTON_PRESSED;
                 else if (app.input.mouseButtons[i] == BUTTON_RELEASE) app.input.mouseButtons[i] = BUTTON_IDLE;
