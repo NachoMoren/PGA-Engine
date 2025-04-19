@@ -762,27 +762,29 @@ void Render(App* app)
 				Light& light = app->lights[i];
 				u32 meshIdx = 0;
 				float scale = 1.0f;
+                glm::mat4 modelMatrix; 
                 if (light.type == LightType_Directional) 
                 {
 					meshIdx = app->primitiveIdxs[2];    
 					scale = 0.5f;
+                    glm::vec3 coneDirection = glm::vec3(0.0f, 1.0f, 0.0f);
+                    glm::vec3 lightDirection = glm::normalize(light.direction);
+                    glm::vec3 rotationAxis = glm::normalize(glm::cross(coneDirection, lightDirection));
+                    float rotationAngle = acos(glm::dot(coneDirection, lightDirection));
+                    glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), rotationAngle, rotationAxis);
+                    modelMatrix = TransformPositionRotationScale(light.position, light.direction, vec3(scale));
+                    modelMatrix = rotationMatrix * modelMatrix;
                 }
                 else 
                 {
+                    modelMatrix = TransformPositionRotationScale(light.position, light.direction, vec3(scale));
 					meshIdx = app->primitiveIdxs[1];
 					scale = 0.5f;
                 }
 				Mesh& mesh = app->meshes[app->models[meshIdx].meshIdx];
 				GLuint vao = FindVAO(mesh, 0, debugLightProgram);
-
-                // Light positioning
-				glm::vec3 coneDirection = glm::vec3(0.0f, 1.0f, 0.0f);
-				glm::vec3 lightDirection = glm::normalize(light.direction);
-				glm::vec3 rotationAxis = glm::normalize(glm::cross(coneDirection, lightDirection));
-				float rotationAngle = acos(glm::dot(coneDirection, lightDirection));
-				glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), rotationAngle, rotationAxis);
-				glm::mat4 modelMatrix = TransformPositionRotationScale(light.position,light.direction, vec3(scale));
-				modelMatrix = rotationMatrix * modelMatrix;
+                
+				
 				modelMatrix = app->camera.projection * app->camera.view * modelMatrix;
 				glBindVertexArray(vao);
 				glUniformMatrix4fv(app->uProjectionMatrix, 1, GL_FALSE, &modelMatrix[0][0]);
