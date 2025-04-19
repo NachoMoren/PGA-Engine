@@ -303,6 +303,7 @@ void Init(App* app)
 	e.name = "Patrick";
 	app->entities.push_back(e);
 
+    // Psyduck model
 	u32 psyduckModel = ModelHelper::LoadModel(app, "Psyduck/Psyduck.obj");
 	Entity psyduck;
 	psyduck.position = vec3(5.0f, 0.0f, 0.0f);
@@ -313,7 +314,7 @@ void Init(App* app)
 	psyduck.name = "Psyduck";
 	app->entities.push_back(psyduck);
 
-    // Load plane and sphere 
+    // Load plane  
 	Entity plane;
 	plane.position = vec3(0.0f, 0.0f, 0.0f);
 	plane.rotation = vec3(0.0f, 0.0f, 0.0f);
@@ -323,9 +324,57 @@ void Init(App* app)
 	plane.name = "Plane";
 	app->entities.push_back(plane);
 
+	// Load sphere
+	Entity sphere;
+	sphere.position = vec3(5.0f, 2.0f, -5.0f);
+	sphere.rotation = vec3(0.0f, 0.0f, 0.0f);
+	sphere.scale = vec3(3.0f, 3.0f, 3.0f);
+	sphere.modelIndex = app->primitiveIdxs[1];
+	sphere.worldMatrix = TransformPositionRotationScale(sphere.position, sphere.rotation, sphere.scale);
+	sphere.name = "Sphere";
+	app->entities.push_back(sphere);
+	
+    // Load cube
+	Entity cube;
+	cube.position = vec3(-5.0f, 1.0f, 5.0f);
+	cube.rotation = vec3(0.0f, 0.0f, 0.0f);
+	cube.scale = vec3(2.0f, 2.0f, 2.0f);
+	cube.modelIndex = app->primitiveIdxs[0];
+	cube.worldMatrix = TransformPositionRotationScale(cube.position, cube.rotation, cube.scale);
+	cube.name = "Cube";
+	app->entities.push_back(cube);
+
+	// Load cone
+	Entity cone;
+	cone.position = vec3(7.0f, 1.0f, 5.0f);
+	cone.rotation = vec3(0.0f, 0.0f, 0.0f);
+	cone.scale = vec3(3.0f, 3.0f, 3.0f);
+	cone.modelIndex = app->primitiveIdxs[2];
+	cone.worldMatrix = TransformPositionRotationScale(cone.position, cone.rotation, cone.scale);
+	cone.name = "Cone";
+	app->entities.push_back(cone);
+
+	// Load torus
+	Entity torus;
+	torus.position = vec3(-7.0f, 1.0f, -8.0f);
+	torus.rotation = vec3(0.0f, 0.0f, 0.0f);
+	torus.scale = vec3(3.0f, 3.0f, 3.0f);
+	torus.modelIndex = app->primitiveIdxs[5];
+	torus.worldMatrix = TransformPositionRotationScale(torus.position, torus.rotation, torus.scale);
+	torus.name = "Torus";
+	app->entities.push_back(torus);
+
     // Lights
-	app->lights.push_back(Light(LightType_Directional, vec3(1.0f, 1.0f, 1.0f), vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), 1.0f, "Directional Light"));
-	app->lights.push_back(Light(LightType_Point, vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(2.0f, 2.0f, 2.0f), 1.0f, "Point Light"));
+    // Directional
+	app->lights.push_back(Light(LightType_Directional, vec3(1.0f, 1.0f, 1.0f), vec3(-1.0f, -0.3f, -1.0f), vec3(0.0f, -10.0f, 0.0f), 1.0f, "Directional Light Init"));
+
+	// Point
+	app->lights.push_back(Light(LightType_Point, vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(14.0f, 2.0f, 13.0f), 1.0f, "Point Light Init 1"));
+	app->lights.push_back(Light(LightType_Point, vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(-7.0f, 2.0f, -12.0f), 1.0f, "Point Light Init 2"));
+	app->lights.push_back(Light(LightType_Point, vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(-2.0f, 5.0f, 10.0f), 1.0f, "Point Light Init 3"));
+	app->lights.push_back(Light(LightType_Point, vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(9.0f, 2.0f, -13.0f), 1.0f, "Point Light Init4"));
+	app->lights.push_back(Light(LightType_Point, vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(-13.0f, 2.0f, 15.0f), 1.0f, "Point Light Init 5"));
+
 
 
     // Load shaders
@@ -769,17 +818,18 @@ void Render(App* app)
 					scale = 0.5f;
                     glm::vec3 coneDirection = glm::vec3(0.0f, 1.0f, 0.0f);
                     glm::vec3 lightDirection = glm::normalize(light.direction);
-                    glm::vec3 rotationAxis = glm::normalize(glm::cross(coneDirection, lightDirection));
-                    float rotationAngle = acos(glm::dot(coneDirection, lightDirection));
+                    glm::vec3 rotationAxis = glm::normalize(glm::cross(lightDirection, coneDirection));
+                    float rotationAngle = acos(glm::dot(lightDirection, coneDirection));
                     glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), rotationAngle, rotationAxis);
                     modelMatrix = TransformPositionRotationScale(light.position, light.direction, vec3(scale));
                     modelMatrix = rotationMatrix * modelMatrix;
                 }
                 else 
                 {
+                    scale = 0.5f;
                     modelMatrix = TransformPositionRotationScale(light.position, light.direction, vec3(scale));
 					meshIdx = app->primitiveIdxs[1];
-					scale = 0.5f;
+					
                 }
 				Mesh& mesh = app->meshes[app->models[meshIdx].meshIdx];
 				GLuint vao = FindVAO(mesh, 0, debugLightProgram);
@@ -962,54 +1012,62 @@ void GuiAddLights(App* app)
 
 void GuiInspectorLights(App* app) 
 {
-    for (int i = 0; i < app->lights.size(); ++i) {
-        ImGui::PushID(app->lights[i].name.c_str());
-        if (ImGui::CollapsingHeader(app->lights[i].name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-            if (app->lights[i].type == LightType_Directional) {
-                ImGui::Text("Position: ");
-				ImGui::DragFloat3("##Position", &app->lights[i].position[0], 0.1f, true);
-				ImGui::Text("Direction: ");
-                if (ImGui::DragFloat3("##Direction", &app->lights[i].direction[0], 0.01f)) {
-					app->lights[i].direction = glm::clamp(app->lights[i].direction, -10.0f, 10.0f);
+    if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
+		ImGui::Text("Number of lights: %d", app->lights.size());
+		ImGui::Separator();
+        for (int i = 0; i < app->lights.size(); ++i) {
+            ImGui::PushID(app->lights[i].name.c_str());
+            if (ImGui::CollapsingHeader(app->lights[i].name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (app->lights[i].type == LightType_Directional) {
+                    ImGui::Text("Position: ");
+                    ImGui::DragFloat3("##Position", &app->lights[i].position[0], 0.1f, true);
+                    ImGui::Text("Direction: ");
+                    if (ImGui::DragFloat3("##Direction", &app->lights[i].direction[0], 0.01f)) {
+                        app->lights[i].direction = glm::clamp(app->lights[i].direction, -10.0f, 10.0f);
+                    }
                 }
-			}
-            else if (app->lights[i].type == LightType_Point) {
-                ImGui::Text("Position: ");
-				ImGui::DragFloat3("##Position", &app->lights[i].position[0], 0.1f, true);
-                ImGui::DragFloat("##Intensity", &app->lights[i].intensity, 0.1f, 0.00001f, 1.0f);
-            }
+                else if (app->lights[i].type == LightType_Point) {
+                    ImGui::Text("Position: ");
+                    ImGui::DragFloat3("##Position", &app->lights[i].position[0], 0.1f, true);
+                    ImGui::DragFloat("##Intensity", &app->lights[i].intensity, 0.1f, 0.00001f, 1.0f);
+                }
 
-			ImGui::Text("Color: ");
-			ImGui::ColorEdit3("##Color", &app->lights[i].color[0], ImGuiColorEditFlags_Float);
+                ImGui::Text("Color: ");
+                ImGui::ColorEdit3("##Color", &app->lights[i].color[0], ImGuiColorEditFlags_Float);
+            }
+            ImGui::PopID();
         }
-		ImGui::PopID();
     }
+    
 }
 
 void GuiInspectorEntities(App* app) {
-    
-    for (int i = 0; i < app->entities.size(); ++i) 
-    {
-		ImGui::PushID(app->entities[i].name.c_str());
-        if (ImGui::CollapsingHeader(app->entities[i].name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-			ImGui::Text("Position: ");
-            if (ImGui::DragFloat3("##Position", &app->entities[i].position[0], 0.5f, true)) 
-            {
-				app->entities[i].worldMatrix = TransformPositionRotationScale(app->entities[i].position, app->entities[i].rotation, app->entities[i].scale);
+
+    if (ImGui::CollapsingHeader("Entities", ImGuiTreeNodeFlags_DefaultOpen)) {
+        for (int i = 0; i < app->entities.size(); ++i)
+        {
+            ImGui::PushID(app->entities[i].name.c_str());
+            if (ImGui::CollapsingHeader(app->entities[i].name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::Text("Position: ");
+                if (ImGui::DragFloat3("##Position", &app->entities[i].position[0], 0.5f, true))
+                {
+                    app->entities[i].worldMatrix = TransformPositionRotationScale(app->entities[i].position, app->entities[i].rotation, app->entities[i].scale);
+                }
+                ImGui::Text("Rotation: ");
+                if (ImGui::DragFloat3("##Rotation", &app->entities[i].rotation[0], 1.0f, 0.0f, 360.0f))
+                {
+                    app->entities[i].worldMatrix = TransformPositionRotationScale(app->entities[i].position, app->entities[i].rotation, app->entities[i].scale);
+                }
+                ImGui::Text("Scale: ");
+                if (ImGui::DragFloat3("##Scale", &app->entities[i].scale[0], 0.01f, 0.00001f, 10000.0f))
+                {
+                    app->entities[i].worldMatrix = TransformPositionRotationScale(app->entities[i].position, app->entities[i].rotation, app->entities[i].scale);
+                }
             }
-			ImGui::Text("Rotation: ");
-            if (ImGui::DragFloat3("##Rotation", &app->entities[i].rotation[0], 1.0f, 0.0f, 360.0f)) 
-            {
-				app->entities[i].worldMatrix = TransformPositionRotationScale(app->entities[i].position, app->entities[i].rotation, app->entities[i].scale);
-            }
-			ImGui::Text("Scale: ");
-            if (ImGui::DragFloat3("##Scale", &app->entities[i].scale[0], 0.01f, 0.00001f, 10000.0f)) 
-            {
-				app->entities[i].worldMatrix = TransformPositionRotationScale(app->entities[i].position, app->entities[i].rotation, app->entities[i].scale);
-            }
+            ImGui::PopID();
         }
-		ImGui::PopID();
     }
+    
 }
 
 void GuiAddPrimitive(App* app) 
