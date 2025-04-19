@@ -295,13 +295,23 @@ void Init(App* app)
     // Load patrick model
     u32 patrickModel = ModelHelper::LoadModel(app, "Patrick/Patrick.obj");
     Entity e; 
-	e.position = vec3(0.0f, 5.0f, 0.0f);
+	e.position = vec3(0.0f, 3.5f, 0.0f);
 	e.rotation = vec3(0.0f, 0.0f, 0.0f);
 	e.scale = vec3(1.0f, 1.0f, 1.0f);
 	e.modelIndex = patrickModel;
 	e.worldMatrix = TransformPositionRotationScale(e.position, e.rotation, e.scale);
 	e.name = "Patrick";
 	app->entities.push_back(e);
+
+	u32 psyduckModel = ModelHelper::LoadModel(app, "Psyduck/Psyduck.obj");
+	Entity psyduck;
+	psyduck.position = vec3(5.0f, 0.0f, 0.0f);
+	psyduck.rotation = vec3(0.0f, 0.0f, 0.0f);
+	psyduck.scale = vec3(2.0f, 2.0f, 2.0f);
+	psyduck.modelIndex = psyduckModel;
+	psyduck.worldMatrix = TransformPositionRotationScale(psyduck.position, psyduck.rotation, psyduck.scale);
+	psyduck.name = "Psyduck";
+	app->entities.push_back(psyduck);
 
     // Load plane and sphere 
 	Entity plane;
@@ -314,7 +324,7 @@ void Init(App* app)
 	app->entities.push_back(plane);
 
     // Lights
-	app->lights.push_back(Light(LightType_Directional, vec3(1.0f, 1.0f, 1.0f), vec3(-1.0f, -1.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f), 1.0f, "Directional Light"));
+	app->lights.push_back(Light(LightType_Directional, vec3(1.0f, 1.0f, 1.0f), vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), 1.0f, "Directional Light"));
 	app->lights.push_back(Light(LightType_Point, vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(2.0f, 2.0f, 2.0f), 1.0f, "Point Light"));
 
 
@@ -525,6 +535,7 @@ void Gui(App* app)
     ImGui::Begin("Inspector");
     GuiAddPrimitive(app);
     GuiAddLights(app);
+
 	ImGui::Separator();
     // TODO: Add lights and primitives from inspector
     ImGui::Text("Select mode");
@@ -753,7 +764,7 @@ void Render(App* app)
 				float scale = 1.0f;
                 if (light.type == LightType_Directional) 
                 {
-					meshIdx = app->primitiveIdxs[0];    
+					meshIdx = app->primitiveIdxs[2];    
 					scale = 0.5f;
                 }
                 else 
@@ -764,7 +775,14 @@ void Render(App* app)
 				Mesh& mesh = app->meshes[app->models[meshIdx].meshIdx];
 				GLuint vao = FindVAO(mesh, 0, debugLightProgram);
 
-				glm::mat4 modelMatrix = TransformPositionRotationScale(light.position, light.direction, vec3(scale));
+                // Light positioning
+				glm::vec3 coneDirection = glm::vec3(0.0f, 1.0f, 0.0f);
+				glm::vec3 lightDirection = glm::normalize(light.direction);
+				glm::vec3 rotationAxis = glm::normalize(glm::cross(coneDirection, lightDirection));
+				float rotationAngle = acos(glm::dot(coneDirection, lightDirection));
+				glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), rotationAngle, rotationAxis);
+				glm::mat4 modelMatrix = TransformPositionRotationScale(light.position,light.direction, vec3(scale));
+				modelMatrix = rotationMatrix * modelMatrix;
 				modelMatrix = app->camera.projection * app->camera.view * modelMatrix;
 				glBindVertexArray(vao);
 				glUniformMatrix4fv(app->uProjectionMatrix, 1, GL_FALSE, &modelMatrix[0][0]);
@@ -922,7 +940,20 @@ void GuiAddLights(App* app)
 			std::string name = "Point Light " + std::to_string(app->pointLightCount);
 			app->lights.push_back({ LightType::LightType_Point, vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, 1.0), vec3(0.0, 1.0, 1.0), 1.0, name });
         }
-
+        if (ImGui::Button("Add 100 point lights")) {
+            for (int i = 0; i < 100; ++i) {
+                app->pointLightCount++;
+                std::string name = "Point Light " + std::to_string(app->pointLightCount);
+                app->lights.push_back({ LightType::LightType_Point, vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, 1.0), vec3(0.0, 1.0, 1.0), 1.0, name });
+            }
+        }
+        if (ImGui::Button("Add 100 directional lights")) {
+            for (int i = 0; i < 100; ++i) {
+                app->directionalLightCount++;
+                std::string name = "Directional Light " + std::to_string(app->directionalLightCount);
+                app->lights.push_back({ LightType::LightType_Directional, vec3(1.0, 1.0, 1.0), vec3(1.0, -1.0, 1.0), vec3(0.0, 0.0, 0.0), 1.0, name });
+            }
+        }
         ImGui::EndMenu();
     }
 }
@@ -936,7 +967,9 @@ void GuiInspectorLights(App* app)
                 ImGui::Text("Position: ");
 				ImGui::DragFloat3("##Position", &app->lights[i].position[0], 0.1f, true);
 				ImGui::Text("Direction: ");
-				ImGui::DragFloat3("##Direction", &app->lights[i].direction[0], 0.1f, true);
+                if (ImGui::DragFloat3("##Direction", &app->lights[i].direction[0], 0.01f)) {
+					app->lights[i].direction = glm::clamp(app->lights[i].direction, -10.0f, 10.0f);
+                }
 			}
             else if (app->lights[i].type == LightType_Point) {
                 ImGui::Text("Position: ");

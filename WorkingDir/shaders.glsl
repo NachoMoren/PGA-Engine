@@ -219,14 +219,8 @@
 			}
 			
 		}
-
-		if (alpha < 0.1)
-		{
-			discard;
-		}
-		else{
-			oColor = vec4(lightColor, 1.0);
-		}
+		oColor = vec4(lightColor, 1.0);
+		
 	}
 
 	#endif
