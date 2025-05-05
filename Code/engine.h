@@ -225,6 +225,8 @@ struct App
 	u32 debugLightProgramIdx;
 	u32 forwardProgramIdx;
 
+    u32 blitBrightestPixelProgramIdx;
+
     u32 patrickModel; 
     
     // texture indices
@@ -313,6 +315,9 @@ void Gui(App* app);
 void Update(App* app);
 
 void Render(App* app);
+
+// Not sure what kind of variable viewSize is
+void PassBlitBrightPixels(GLuint *framebuffer, const int width, const int height, GLenum colorattachment, GLuint inputTexture, GLint inputLOD, float threshold);
 
 u32 LoadTexture2D(App* app, const char* filepath);
 

@@ -168,6 +168,12 @@ GLuint CreateTexture2DFromImage(Image image)
     return texHandle;
 }
 
+void PassBlitBrightPixels(GLuint* framebuffer, const int width, const int height, GLenum colorattachment, GLuint inputTexture, GLint inputLOD, float threshold)
+{
+    glGenFramebuffers(1, framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, *framebuffer);
+}
+
 u32 LoadTexture2D(App* app, const char* filepath)
 {
     for (u32 texIdx = 0; texIdx < app->textures.size(); ++texIdx)

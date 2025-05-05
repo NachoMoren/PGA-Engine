@@ -112,5 +112,8 @@
     <None Include="WorkingDir\RENDER_GEOMETRY.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="WorkingDir\BLIT_BRIGHTEST.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

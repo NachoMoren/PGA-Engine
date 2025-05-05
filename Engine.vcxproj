@@ -51,6 +51,7 @@
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="WorkingDir\BLIT_BRIGHTEST.glsl" />
     <None Include="WorkingDir\RENDER_GEOMETRY.glsl" />
     <None Include="WorkingDir\shaders.glsl" />
   </ItemGroup>
