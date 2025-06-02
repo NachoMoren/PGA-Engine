@@ -403,6 +403,10 @@ void Init(App* app)
     app->debugLightProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_LIGHTS");
 	app->uProjectionMatrix = glGetUniformLocation(app->programs[app->debugLightProgramIdx].handle, "uProjectionMatrix");
 	app->uLightColor = glGetUniformLocation(app->programs[app->debugLightProgramIdx].handle, "uLightColor");
+
+    app->blitBrightestPixelProgramIdx = LoadProgram(app, "shaders.glsl", "BLOOM");
+    app->bloomProgram_uImage = glGetUniformLocation(app->programs[app->blitBrightestPixelProgramIdx].handle, "uImage");
+    app->bloomProgram_uHorizontal = glGetUniformLocation(app->programs[app->blitBrightestPixelProgramIdx].handle, "uHorizontal");
 	
     app->mode = Mode_Deferred;
 }
@@ -508,6 +512,30 @@ void InitFramebuffers(App* app)
 	app->renderSelector["Depth"] = app->depthAttachmentTexture;
 	app->renderSelector["Main"] = app->mainAttachmentTexture;
 	app->renderSelector["Blit"] = app->blitAttachmentTexture;
+	app->renderSelector["Ping"] = app->pingPongAttachmentTexture[0];
+	app->renderSelector["Pong"] = app->pingPongAttachmentTexture[1];
+
+    // Ping-pong buffer
+    glGenFramebuffers(2, app->pingPongBuffer);
+    glGenTextures(2, app->pingPongAttachmentTexture);
+
+    for (int i = 0; i < 2; i++)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, app->pingPongBuffer[i]);
+
+        glBindTexture(GL_TEXTURE_2D, app->pingPongAttachmentTexture[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->pingPongAttachmentTexture[i], 0);
+
+        CheckFramebufferStatus();
+
+        GLuint drawBuffersPingPong[] = { GL_COLOR_ATTACHMENT0 };
+        glDrawBuffers(ARRAY_COUNT(drawBuffersPingPong), drawBuffersPingPong);
+    }
 }
 
 void CheckFramebufferStatus() {
@@ -855,6 +883,34 @@ void Render(App* app)
             }
 			glUseProgram(0);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+             // Ping-pong pass
+
+            bool horizontal = true; 
+            bool first_iteration = true;
+
+            int amount = 10;
+
+            Program& bloomProgram = app->programs[app->blitBrightestPixelProgramIdx];
+            glUseProgram(bloomProgram.handle);
+
+            if (first_iteration) glUniform1i(app->bloomProgram_uImage, 0);
+
+            for (unsigned int i = 0 ; i <amount; i++)
+            {
+                glBindFramebuffer(GL_FRAMEBUFFER, app->pingPongBuffer[horizontal]);
+                glUniform1i(app->bloomProgram_uHorizontal, horizontal);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, first_iteration ? app->blitAttachmentTexture : app->pingPongBuffer[!horizontal]);
+                
+                //RenderQuad();
+                horizontal = !horizontal;
+                if (first_iteration)
+                    first_iteration = false;
+            }
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glUseProgram(0);
         }
         break; 
     }

@@ -257,6 +257,9 @@ struct App
     GLuint uProjectionMatrix; 
 	GLuint uLightColor;
 
+    GLuint bloomProgram_uHorizontal;
+    GLuint bloomProgram_uImage;
+
 
 	// Color attachment of the framebuffer
 	GLuint colorAttachmentTexture;
@@ -266,6 +269,7 @@ struct App
 	GLuint mainAttachmentTexture;
 
 	GLuint blitAttachmentTexture;
+    GLuint pingPongAttachmentTexture[2];
 
     // Render selector
 	std::unordered_map<std::string, GLuint> renderSelector;
@@ -288,7 +292,8 @@ struct App
     GLuint gBuffer;
 	GLuint lightBuffer;
 
-    // 
+    // Framebuffer for Bloom
+    GLuint pingPongBuffer[2];
 
     // Framebuffer for forward
     GLuint forwardBuffer; 
