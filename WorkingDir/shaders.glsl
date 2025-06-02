@@ -144,6 +144,7 @@
 	};
 
 	layout(location = 0) out vec4 oColor;
+	layout(location = 1) out vec4 oBlit;
 
 	layout(binding = 0, std140) uniform GlobalParams
 	{
@@ -220,6 +221,13 @@
 			
 		}
 		oColor = vec4(lightColor, 1.0);
+
+		float brightness = dot(oColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+		if(brightness > 1.0)
+			oBlit = vec4(oColor.rgb, 1.0);
+		else
+			oBlit = vec4(0.0, 0.0, 0.0, 1.0);
+
 		
 	}
 

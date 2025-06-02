@@ -404,7 +404,7 @@ void Init(App* app)
 	app->uProjectionMatrix = glGetUniformLocation(app->programs[app->debugLightProgramIdx].handle, "uProjectionMatrix");
 	app->uLightColor = glGetUniformLocation(app->programs[app->debugLightProgramIdx].handle, "uLightColor");
 	
-    app->mode = Mode_Forward;
+    app->mode = Mode_Deferred;
 }
 
 void InitBuffers(App* app) 
@@ -469,6 +469,8 @@ void InitFramebuffers(App* app)
     // Final texture
 	app->mainAttachmentTexture = CreateTextureAttachment(GL_RGBA16F, GL_RGBA, GL_FLOAT, app->displaySize.x, app->displaySize.y);
 
+	app->blitAttachmentTexture = CreateTextureAttachment(GL_RGBA16F, GL_RGBA, GL_FLOAT, app->displaySize.x, app->displaySize.y);
+
     // Depth component 
     GLuint depthLightAttachmentHandle;
 	depthLightAttachmentHandle = CreateTextureAttachment(GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_FLOAT, app->displaySize.x, app->displaySize.y);
@@ -477,11 +479,12 @@ void InitFramebuffers(App* app)
     glGenFramebuffers(1, &app->lightBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->mainAttachmentTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->blitAttachmentTexture, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthLightAttachmentHandle, 0);
 
 	CheckFramebufferStatus();
 
-	GLuint drawBuffersLight[] = { GL_COLOR_ATTACHMENT0 };
+	GLuint drawBuffersLight[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
 	glDrawBuffers(ARRAY_COUNT(drawBuffersLight), drawBuffersLight);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -504,6 +507,7 @@ void InitFramebuffers(App* app)
 	app->renderSelector["Normal"] = app->normalAttachmentTexture;
 	app->renderSelector["Depth"] = app->depthAttachmentTexture;
 	app->renderSelector["Main"] = app->mainAttachmentTexture;
+	app->renderSelector["Blit"] = app->blitAttachmentTexture;
 }
 
 void CheckFramebufferStatus() {

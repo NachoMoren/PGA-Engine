@@ -265,6 +265,8 @@ struct App
 	GLuint positionAttachmentTexture;
 	GLuint mainAttachmentTexture;
 
+	GLuint blitAttachmentTexture;
+
     // Render selector
 	std::unordered_map<std::string, GLuint> renderSelector;
     std::string currentAttachment = "Main";
@@ -285,6 +287,8 @@ struct App
 	// Framebuffers for deferred
     GLuint gBuffer;
 	GLuint lightBuffer;
+
+    // 
 
     // Framebuffer for forward
     GLuint forwardBuffer; 
