@@ -10,6 +10,9 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 
+#define MIPMAP_BASE_LEVEL 0
+#define MIPMAP_MAX_LEVEL  4
+
 GLuint CreateProgramFromSource(String programSource, const char* shaderName)
 {
     GLchar  infoLogBuffer[1024] = {};
@@ -166,12 +169,6 @@ GLuint CreateTexture2DFromImage(Image image)
     glBindTexture(GL_TEXTURE_2D, 0);
 
     return texHandle;
-}
-
-void PassBlitBrightPixels(GLuint* framebuffer, const int width, const int height, GLenum colorattachment, GLuint inputTexture, GLint inputLOD, float threshold)
-{
-    glGenFramebuffers(1, framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, *framebuffer);
 }
 
 u32 LoadTexture2D(App* app, const char* filepath)
@@ -404,9 +401,14 @@ void Init(App* app)
 	app->uProjectionMatrix = glGetUniformLocation(app->programs[app->debugLightProgramIdx].handle, "uProjectionMatrix");
 	app->uLightColor = glGetUniformLocation(app->programs[app->debugLightProgramIdx].handle, "uLightColor");
 
-    app->blitBrightestPixelProgramIdx = LoadProgram(app, "shaders.glsl", "BLOOM");
-    app->bloomProgram_uImage = glGetUniformLocation(app->programs[app->blitBrightestPixelProgramIdx].handle, "uImage");
-    app->bloomProgram_uHorizontal = glGetUniformLocation(app->programs[app->blitBrightestPixelProgramIdx].handle, "uHorizontal");
+    app->blitBrightestPixelProgramIdx = LoadProgram(app, "BLIT_BRIGHTEST.glsl", "BLIT_BRIGHTEST");
+	app->colorTexture = glGetUniformLocation(app->programs[app->blitBrightestPixelProgramIdx].handle, "uTexture");
+	app->threshold = glGetUniformLocation(app->programs[app->blitBrightestPixelProgramIdx].handle, "threshold");
+
+	app->blurProgramIdx = LoadProgram(app, "shaders.glsl", "BLUR");
+	app->colorMap = glGetUniformLocation(app->programs[app->blurProgramIdx].handle, "uColorMap");
+	app->inputLod = glGetUniformLocation(app->programs[app->blurProgramIdx].handle, "uInputLod");
+	app->dir = glGetUniformLocation(app->programs[app->blurProgramIdx].handle, "uDir");
 	
     app->mode = Mode_Deferred;
 }
@@ -483,12 +485,12 @@ void InitFramebuffers(App* app)
     glGenFramebuffers(1, &app->lightBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->mainAttachmentTexture, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->blitAttachmentTexture, 0);
+    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->blitAttachmentTexture, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthLightAttachmentHandle, 0);
 
 	CheckFramebufferStatus();
 
-	GLuint drawBuffersLight[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+	GLuint drawBuffersLight[] = { GL_COLOR_ATTACHMENT0};
 	glDrawBuffers(ARRAY_COUNT(drawBuffersLight), drawBuffersLight);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -512,30 +514,120 @@ void InitFramebuffers(App* app)
 	app->renderSelector["Depth"] = app->depthAttachmentTexture;
 	app->renderSelector["Main"] = app->mainAttachmentTexture;
 	app->renderSelector["Blit"] = app->blitAttachmentTexture;
-	app->renderSelector["Ping"] = app->pingPongAttachmentTexture[0];
-	app->renderSelector["Pong"] = app->pingPongAttachmentTexture[1];
+	app->renderSelector["BloomH"] = app->rtBloomH;
+	app->renderSelector["Bright"] = app->rtBright;
 
-    // Ping-pong buffer
-    glGenFramebuffers(2, app->pingPongBuffer);
-    glGenTextures(2, app->pingPongAttachmentTexture);
+	InitBloomMipmap(app);
+	GenBloomFramebuffers(app);
 
-    for (int i = 0; i < 2; i++)
-    {
-        glBindFramebuffer(GL_FRAMEBUFFER, app->pingPongBuffer[i]);
+	//app->renderSelector["Ping"] = app->pingPongAttachmentTexture[0];
+	//app->renderSelector["Pong"] = app->pingPongAttachmentTexture[1];
 
-        glBindTexture(GL_TEXTURE_2D, app->pingPongAttachmentTexture[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_FLOAT, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->pingPongAttachmentTexture[i], 0);
+    //// Ping-pong buffer
+    //glGenFramebuffers(2, app->pingPongBuffer);
+    //glGenTextures(2, app->pingPongAttachmentTexture);
 
-        CheckFramebufferStatus();
+    //for (int i = 0; i < 2; i++)
+    //{
+    //    glBindFramebuffer(GL_FRAMEBUFFER, app->pingPongBuffer[i]);
 
-        GLuint drawBuffersPingPong[] = { GL_COLOR_ATTACHMENT0 };
-        glDrawBuffers(ARRAY_COUNT(drawBuffersPingPong), drawBuffersPingPong);
-    }
+    //    glBindTexture(GL_TEXTURE_2D, app->pingPongAttachmentTexture[i]);
+    //    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_FLOAT, NULL);
+    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->pingPongAttachmentTexture[i], 0);
+
+    //    CheckFramebufferStatus();
+
+    //    GLuint drawBuffersPingPong[] = { GL_COLOR_ATTACHMENT0 };
+    //    glDrawBuffers(ARRAY_COUNT(drawBuffersPingPong), drawBuffersPingPong);
+    //}
+}
+
+void InitBloomMipmap(App* app) 
+{
+    // Bloom
+    if (app->rtBright != 0)
+        glDeleteTextures(1, &app->rtBright);
+	glGenTextures(1, &app->rtBright);
+	glBindTexture(GL_TEXTURE_2D, app->rtBright);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, MIPMAP_BASE_LEVEL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, MIPMAP_MAX_LEVEL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, app->displaySize.x/2, app->displaySize.y/2, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 1, GL_RGBA16F, app->displaySize.x / 4, app->displaySize.y / 4, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 2, GL_RGBA16F, app->displaySize.x / 8, app->displaySize.y / 8, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 3, GL_RGBA16F, app->displaySize.x / 16, app->displaySize.y / 16, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 4, GL_RGBA16F, app->displaySize.x / 32, app->displaySize.y / 32, 0, GL_RGBA, GL_FLOAT, NULL);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	// Bloom Mipmap
+	if (app->rtBloomH != 0)
+		glDeleteTextures(1, &app->rtBloomH);
+	glGenTextures(1, &app->rtBloomH);
+	glBindTexture(GL_TEXTURE_2D, app->rtBloomH);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, MIPMAP_BASE_LEVEL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, MIPMAP_MAX_LEVEL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, app->displaySize.x / 2, app->displaySize.y / 2, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 1, GL_RGBA16F, app->displaySize.x / 4, app->displaySize.y / 4, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 2, GL_RGBA16F, app->displaySize.x / 8, app->displaySize.y / 8, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 3, GL_RGBA16F, app->displaySize.x / 16, app->displaySize.y / 16, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 4, GL_RGBA16F, app->displaySize.x / 32, app->displaySize.y / 32, 0, GL_RGBA, GL_FLOAT, NULL);
+	glGenerateMipmap(GL_TEXTURE_2D);
+}
+
+void GenBloomFramebuffers(App* app) 
+{
+    GLuint drawBuffersBloom[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glGenFramebuffers(1, &app->fboBloom1);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->fboBloom1);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->rtBright, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->rtBloomH, 0);
+    CheckFramebufferStatus();
+   
+    glDrawBuffers(ARRAY_COUNT(drawBuffersBloom), drawBuffersBloom);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glGenFramebuffers(1, &app->fboBloom2);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->fboBloom2);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->rtBright, 1);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->rtBloomH, 1);
+    CheckFramebufferStatus();
+    glDrawBuffers(ARRAY_COUNT(drawBuffersBloom), drawBuffersBloom);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glGenFramebuffers(1, &app->fboBloom3);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->fboBloom3);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->rtBright, 2);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->rtBloomH, 2);
+    CheckFramebufferStatus();
+    glDrawBuffers(ARRAY_COUNT(drawBuffersBloom), drawBuffersBloom);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glGenFramebuffers(1, &app->fboBloom4);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->fboBloom4);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->rtBright, 3);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->rtBloomH, 3);
+    CheckFramebufferStatus();
+    glDrawBuffers(ARRAY_COUNT(drawBuffersBloom), drawBuffersBloom);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glGenFramebuffers(1, &app->fboBloom5);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->fboBloom5);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->rtBright, 4);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->rtBloomH, 4);
+    CheckFramebufferStatus();
+    glDrawBuffers(ARRAY_COUNT(drawBuffersBloom), drawBuffersBloom);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void CheckFramebufferStatus() {
@@ -555,6 +647,78 @@ void CheckFramebufferStatus() {
         default: ELOG("Unknown framebuffer status error");
         }
     }
+}
+
+void PassBlur(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint texture, GLint inputLod, int dirX, int dirY) 
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glDrawBuffers(1, &colorAttachment);
+	glViewport(0, 0, w, h);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glDisable(GL_DEPTH_TEST);
+	glDisable(GL_BLEND);
+
+    Program& blurProgram = app->programs[app->blurProgramIdx];
+    glUseProgram(blurProgram.handle);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform1i(app->colorMap, 0);
+	glUniform1i(app->inputLod, inputLod);
+	glUniform2i(app->dir, dirX, dirY);
+
+
+    glBindVertexArray(app->vao);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+    glBindVertexArray(0);
+
+    glUseProgram(0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void PassBlitBrightPixels(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint texture, float threshold)
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glDrawBuffers(1, &colorAttachment);
+    glViewport(0, 0, w, h);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	Program& blitBrightestPixelProgram = app->programs[app->blitBrightestPixelProgramIdx];
+	glUseProgram(blitBrightestPixelProgram.handle);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glBindVertexArray(app->vao);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+
+    glUniform1i(app->colorTexture, 0);
+    glUniform1f(app->threshold, threshold);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+    glBindVertexArray(0);
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, app->lightBuffer);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.y, 0, 0, app->displaySize.x, app->displaySize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    glUseProgram(0);
+
+   /* glBindVertexArray(app->vao);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+    glBindVertexArray(0);*/
+
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    //glUseProgram(0);
+    //glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 GLuint CreateTextureAttachment(GLenum internalFormat, GLenum format, GLenum type, int width, int height) 
@@ -842,8 +1006,33 @@ void Render(App* app)
 			glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.y, 0, 0, app->displaySize.x, app->displaySize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 			glUseProgram(0);
 
+            
+            // Blur/Bloom
+			float threshold = 1.0f;
+			PassBlitBrightPixels(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->mainAttachmentTexture, threshold);
+			glBindTexture(GL_TEXTURE_2D, app->rtBright);
+			glGenerateMipmap(GL_TEXTURE_2D);
+
+            //Test();
+   //         // horizontal blur
+			PassBlur(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT1, app->rtBright, 0, 1, 0);
+			//PassBlur(app, app->fboBloom2, app->displaySize.x / 4, app->displaySize.y / 4, GL_COLOR_ATTACHMENT1, app->rtBright, 1, 1, 0);
+   //         PassBlur(app, app->fboBloom3, app->displaySize.x / 8, app->displaySize.y / 8, GL_COLOR_ATTACHMENT1, app->rtBright, 2, 1, 0);
+			//PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT1, app->rtBright, 3, 1, 0);
+			//PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT1, app->rtBright, 4, 1, 0);
+
+			//// vertical blur
+			//PassBlur(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->rtBloomH, 0, 0, 1);
+			//PassBlur(app, app->fboBloom2, app->displaySize.x / 4, app->displaySize.y / 4, GL_COLOR_ATTACHMENT0, app->rtBloomH, 1, 0, 1);
+			//PassBlur(app, app->fboBloom3, app->displaySize.x / 8, app->displaySize.y / 8, GL_COLOR_ATTACHMENT0, app->rtBloomH, 2, 0, 1);
+			//PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT0, app->rtBloomH, 3, 0, 1);
+			//PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT0, app->rtBloomH, 4, 0, 1);
+
+            // Bloom
+
+			
             // Show lights for debug
-			Program& debugLightProgram = app->programs[app->debugLightProgramIdx];
+            Program& debugLightProgram = app->programs[app->debugLightProgramIdx];
 			glUseProgram(debugLightProgram.handle);
             for (int i = 0; i < app->lights.size(); ++i) {
 				Light& light = app->lights[i];
@@ -886,31 +1075,31 @@ void Render(App* app)
 
              // Ping-pong pass
 
-            bool horizontal = true; 
-            bool first_iteration = true;
+            //bool horizontal = true; 
+            //bool first_iteration = true;
 
-            int amount = 10;
+            //int amount = 10;
 
-            Program& bloomProgram = app->programs[app->blitBrightestPixelProgramIdx];
-            glUseProgram(bloomProgram.handle);
+            //Program& bloomProgram = app->programs[app->blitBrightestPixelProgramIdx];
+            //glUseProgram(bloomProgram.handle);
 
-            if (first_iteration) glUniform1i(app->bloomProgram_uImage, 0);
+            //if (first_iteration) glUniform1i(app->bloomProgram_uImage, 0);
 
-            for (unsigned int i = 0 ; i <amount; i++)
-            {
-                glBindFramebuffer(GL_FRAMEBUFFER, app->pingPongBuffer[horizontal]);
-                glUniform1i(app->bloomProgram_uHorizontal, horizontal);
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, first_iteration ? app->blitAttachmentTexture : app->pingPongBuffer[!horizontal]);
-                
-                //RenderQuad();
-                horizontal = !horizontal;
-                if (first_iteration)
-                    first_iteration = false;
-            }
+            //for (unsigned int i = 0 ; i <amount; i++)
+            //{
+            //    glBindFramebuffer(GL_FRAMEBUFFER, app->pingPongBuffer[horizontal]);
+            //    glUniform1i(app->bloomProgram_uHorizontal, horizontal);
+            //    glActiveTexture(GL_TEXTURE0);
+            //    glBindTexture(GL_TEXTURE_2D, first_iteration ? app->blitAttachmentTexture : app->pingPongBuffer[!horizontal]);
+            //    
+            //    //RenderQuad();
+            //    horizontal = !horizontal;
+            //    if (first_iteration)
+            //        first_iteration = false;
+            //}
 
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glUseProgram(0);
+            //glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            //glUseProgram(0);
         }
         break; 
     }

@@ -28,13 +28,13 @@
 	void main()
 	{
 		vec3 luminances = vec3(0.2126, 0.7152, 0.0722);
-		vec4 texel = texture2D(uTexture, texCoord);
+		vec4 texel = texture2D(uTexture, vTexCoord);
 		float luminance = dot(luminances, texel.rgb);
 		luminance = max(0.0, luminance - threshold);
 		texel.rgb *= sign(luminance);
 		texel.a = 1.0;
 
-		outColor = texel;
+		oColor = texel;
 	}
 	#endif
 #endif

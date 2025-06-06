@@ -227,6 +227,10 @@ struct App
 
     u32 blitBrightestPixelProgramIdx;
 
+    // Bloom/blur shader programs
+	u32 bloomProgramIdx;
+	u32 blurProgramIdx;
+
     u32 patrickModel; 
     
     // texture indices
@@ -257,8 +261,12 @@ struct App
     GLuint uProjectionMatrix; 
 	GLuint uLightColor;
 
-    GLuint bloomProgram_uHorizontal;
-    GLuint bloomProgram_uImage;
+    // Bloom uniforms
+    GLuint colorMap;
+    GLuint colorTexture; 
+	GLuint threshold;
+    GLuint inputLod; 
+    GLuint dir; 
 
 
 	// Color attachment of the framebuffer
@@ -293,7 +301,18 @@ struct App
 	GLuint lightBuffer;
 
     // Framebuffer for Bloom
-    GLuint pingPongBuffer[2];
+    //GLuint pingPongBuffer[2];
+
+    
+
+    // Bloom mipmap
+    GLuint rtBright; 
+    GLuint rtBloomH; 
+	GLuint fboBloom1;
+	GLuint fboBloom2;
+	GLuint fboBloom3;
+	GLuint fboBloom4;
+	GLuint fboBloom5;
 
     // Framebuffer for forward
     GLuint forwardBuffer; 
@@ -319,14 +338,19 @@ void InitBuffers(App* app);
 
 void InitOpenGLInfo(App* app);
 
+void InitBloomMipmap(App* app);
+
+void GenBloomFramebuffers(App* app);
+
 void Gui(App* app);
 
 void Update(App* app);
 
 void Render(App* app);
 
-// Not sure what kind of variable viewSize is
-void PassBlitBrightPixels(GLuint *framebuffer, const int width, const int height, GLenum colorattachment, GLuint inputTexture, GLint inputLOD, float threshold);
+void PassBlur(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint texture, GLint inputLod, int dirX, int dirY);
+
+void PassBlitBrightPixels(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint texture, float threshold);
 
 u32 LoadTexture2D(App* app, const char* filepath);
 
