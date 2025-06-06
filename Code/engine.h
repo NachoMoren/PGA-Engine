@@ -282,7 +282,14 @@ struct App
     //Water effect uniforms
     GLuint waterProgram_uView; 
 	GLuint waterProgram_uProjection;
-    GLuint waterProgram_Worldspace;
+    GLuint waterProgram_uViewInverse; 
+    GLuint waterProgram_viewportSize; 
+	GLuint waterProgram_uReflectionMap;
+	GLuint waterProgram_uRefractionMap;
+	GLuint waterProgram_uReflectionDepth;
+	GLuint waterProgram_uRefractionDepth;
+	GLuint waterProgram_normalMap;
+    GLuint waterProgram_dudvMap; 
     GLuint waterProgram_uClipPlane;
 
 

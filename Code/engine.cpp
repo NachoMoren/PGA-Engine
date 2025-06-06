@@ -430,9 +430,16 @@ void Init(App* app)
 
 	app->waterProgramIdx = LoadProgram(app, "shaders.glsl", "WATER_EFFECT");
 	app->waterProgram_uView = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uView");
-	app->waterProgram_uClipPlane = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uClipPlane");
 	app->waterProgram_uProjection = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uProjection");
-    app->waterProgram_Worldspace = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uWorldspace");
+	app->waterProgram_uViewInverse = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uViewInverse");
+	app->waterProgram_viewportSize = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "viewportSize");
+	app->waterProgram_uReflectionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "reflectionMap");
+	app->waterProgram_uRefractionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "refractionMap");
+	app->waterProgram_uReflectionDepth = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "reflectionDepth");
+	app->waterProgram_uRefractionDepth = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "refractionDepth");
+	app->waterProgram_normalMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "normalMap");
+	app->waterProgram_dudvMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "dudvMap");
+	app->waterProgram_uClipPlane = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uClipPlane");
 	
     app->mode = Mode_Deferred;
 }
@@ -1214,18 +1221,18 @@ void PassWaterScene(App* app, Camera *camera, GLenum colorAttachment, WaterScene
     glUseProgram(waterProgram.handle);
 
     glm::mat4 viewMatrix = camera->view; 
+    glUniform2f(app->waterProgram_viewportSize, app->displaySize.x, app->displaySize.y);
 	glUniformMatrix4fv(app->waterProgram_uView, 1, GL_FALSE, &viewMatrix[0][0]);
+	glUniformMatrix4fv(app->waterProgram_uViewInverse, 1, GL_FALSE, &glm::inverse(viewMatrix)[0][0]);
 	glUniformMatrix4fv(app->waterProgram_uProjection, 1, GL_FALSE, &camera->projection[0][0]);
-    glm::vec3 eyeWorldspace = glm::inverse(camera->view) * glm::vec4(0.0, 0.0, 0.0, 1.0);
-    glUniform3fv(app->waterProgram_Worldspace, 1, &eyeWorldspace[0]);
 
 	glm::vec4 clipPlane = vec4(0.0f, 1.0f, 0.0f, 0.0f); // Default clip plane
 	glm::vec4 clipPlaneReflection = vec4(0.0f, -1.0f, 0.0f, 0.0f);
 
     if(part == REFLECTION)
-		glUniform4fv(app->waterProgram_uClipPlane, 1, &clipPlane[0]);
+		glUniform4fv(app->waterProgram_uClipPlane, 1, glm::value_ptr(clipPlane));
     else
-		glUniform4fv(app->waterProgram_uClipPlane, 1, &clipPlaneReflection[0]);
+		glUniform4fv(app->waterProgram_uClipPlane, 1, glm::value_ptr(clipPlaneReflection));
 
 	glUseProgram(0);
     glDisable(GL_CLIP_DISTANCE0);
