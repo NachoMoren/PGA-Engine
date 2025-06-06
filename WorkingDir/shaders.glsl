@@ -421,7 +421,7 @@
 
 		const vec2 waveLength = vec2(2.0);
 		const vec2 waveStrength = vec2(0.05);
-		const float turbidity = 10.0;
+		const float turbidityDistance = 10.0;
 
 		vec2 distortion = (2.0 * texture(dudvMap, Pw.xz/waveLength).rg - vec2(1.0)) * waveStrength + waveStrength/7.0;
 		vec2 reflectionTexCoord = vec2(texCoord.s, 1.0 - texCoord.t) + distortion;
@@ -431,7 +431,15 @@
 
 		float distortedGroundDepth = texture(refractionDepth, refractionTexCoord).x;
 		vec3 distortedGroundPosViewspace = reconstructPixelPosition(distortedGroundDepth);
-		float distortedWaterDepth = texture(reflectionDepth, reflectionTexCoord).x;
+		float distortedWaterDepth = FSIn.positionViewspace.z - distortedGroundPosViewspace.z;
+		float tintFactor = clamp(distortedWaterDepth / turbidityDistance, 0.0, 1.0);
+		vec3 waterColor = vec3(0.25, 0.4, 0.6);
+		refractionColor = mix(refractionColor, waterColor, tintFactor);
+
+		vec3 F0 = vec3(0.1);
+		vec3 F = fresnelSchlick(max(0.0, dot(V,N)), F0);
+		oColor.rgb = mix(refractionColor, reflectionColor, F);
+		oColor.a = 1.0;
 	}
 
 	#endif
