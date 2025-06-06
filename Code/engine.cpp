@@ -479,8 +479,6 @@ void InitFramebuffers(App* app)
     // Final texture
 	app->mainAttachmentTexture = CreateTextureAttachment(GL_RGBA16F, GL_RGBA, GL_FLOAT, app->displaySize.x, app->displaySize.y);
 
-	//app->blitAttachmentTexture = CreateTextureAttachment(GL_RGBA16F, GL_RGBA, GL_FLOAT, app->displaySize.x, app->displaySize.y);
-
 	app->bloomAttachmentTexture = CreateTextureAttachment(GL_RGBA16F, GL_RGBA, GL_FLOAT, app->displaySize.x, app->displaySize.y);
 
     // Depth component 
@@ -491,12 +489,11 @@ void InitFramebuffers(App* app)
     glGenFramebuffers(1, &app->lightBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->mainAttachmentTexture, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->bloomAttachmentTexture, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthLightAttachmentHandle, 0);
 
 	CheckFramebufferStatus();
 
-	GLuint drawBuffersLight[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+	GLuint drawBuffersLight[] = { GL_COLOR_ATTACHMENT0};
 	glDrawBuffers(ARRAY_COUNT(drawBuffersLight), drawBuffersLight);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -512,6 +509,12 @@ void InitFramebuffers(App* app)
 	glDrawBuffers(ARRAY_COUNT(drawBuffersForward), drawBuffersForward);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	// Bloom Framebuffer
+	glGenFramebuffers(1, &app->bloomBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, app->bloomBuffer);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->bloomAttachmentTexture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthLightAttachmentHandle, 0);
+
     InitBloomMipmap(app);
     GenBloomFramebuffers(app);
 
@@ -523,7 +526,6 @@ void InitFramebuffers(App* app)
 	app->renderSelector["Normal"] = app->normalAttachmentTexture;
 	app->renderSelector["Depth"] = app->depthAttachmentTexture;
 	app->renderSelector["Main"] = app->mainAttachmentTexture;
-	app->renderSelector["Blit"] = app->blitAttachmentTexture;
 	app->renderSelector["BloomH"] = app->rtBloomH;
 	app->renderSelector["Bright"] = app->rtBright;
 
@@ -729,7 +731,7 @@ void PassBloom(App* app, u32 fbo, GLenum colorAttachment, GLuint texture, int ma
 
     glDisable(GL_DEPTH);
     glEnable(GL_BLEND);
-    //glBlendFunc(GL_ONE, GL_ONE);
+    glBlendFunc(GL_ONE, GL_ONE);
 
     Program& bloomProgram = app->programs[app->bloomProgramIdx];
     glUseProgram(bloomProgram.handle);
@@ -746,6 +748,7 @@ void PassBloom(App* app, u32 fbo, GLenum colorAttachment, GLuint texture, int ma
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
     glBindVertexArray(0);
 
+    glDisable(GL_BLEND);
     glUseProgram(0);
 }
 
@@ -1057,7 +1060,15 @@ void Render(App* app)
 			PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT0, app->rtBloomH, 3, 0, 1);
 			PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT0, app->rtBloomH, 4, 0, 1);
 
-            PassBloom(app, app->lightBuffer, GL_COLOR_ATTACHMENT1, app->rtBright, MIPMAP_MAX_LEVEL);
+			glActiveTexture(GL_TEXTURE0);   
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, app->lightBuffer);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, app->bloomBuffer);
+
+            glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.y, 0, 0, app->displaySize.x, app->displaySize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+            PassBloom(app, app->bloomBuffer, GL_COLOR_ATTACHMENT0, app->rtBright, MIPMAP_MAX_LEVEL);
+
+           
 			
             // Show lights for debug
             Program& debugLightProgram = app->programs[app->debugLightProgramIdx];

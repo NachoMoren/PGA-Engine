@@ -301,6 +301,7 @@ struct App
 	// Framebuffers for deferred
     GLuint gBuffer;
 	GLuint lightBuffer;
+	GLuint bloomBuffer;
 
     // Framebuffer for Bloom
     //GLuint pingPongBuffer[2];
