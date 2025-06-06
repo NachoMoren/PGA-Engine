@@ -317,6 +317,17 @@ void Init(App* app)
 	psyduck.name = "Psyduck";
 	app->entities.push_back(psyduck);
 
+    // Pond scene
+	u32 pondModel = ModelHelper::LoadModel(app, "lp_pond.fbx");
+	Entity pond;
+	pond.position = vec3(0.0f, 0.0f, 0.0f);
+	pond.rotation = vec3(0.0f, 0.0f, 0.0f);
+	pond.scale = vec3(1.0f, 1.0f, 1.0f);
+	pond.modelIndex = pondModel;
+	pond.worldMatrix = TransformPositionRotationScale(pond.position, pond.rotation, pond.scale);
+	pond.name = "Pond";
+	app->entities.push_back(pond);
+
     // Load plane  
 	Entity plane;
 	plane.position = vec3(0.0f, 0.0f, 0.0f);
@@ -521,6 +532,64 @@ void InitFramebuffers(App* app)
     InitBloomMipmap(app);
     GenBloomFramebuffers(app);
 
+	// Water Effect FBO and textures
+
+    glGenTextures(1, &app->rtReflection);
+    glBindTexture(GL_TEXTURE_2D, app->rtReflection);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+    glGenTextures(1, &app->rtRefraction);
+    glBindTexture(GL_TEXTURE_2D, app->rtRefraction);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+	glGenTextures(1, &app->rtRefractionDepth);
+	glBindTexture(GL_TEXTURE_2D, app->rtRefractionDepth);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+	glGenTextures(1, &app->rtReflectionDepth);
+	glBindTexture(GL_TEXTURE_2D, app->rtReflectionDepth);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+    // Water effect FBO
+    glGenFramebuffers(1, &app->reflectionBuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->rtReflection);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->rtReflection, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->rtReflectionDepth, 0);
+
+    CheckFramebufferStatus();
+
+    GLuint drawReflectionBuffer[] = { GL_COLOR_ATTACHMENT0 };
+    glDrawBuffers(ARRAY_COUNT(drawReflectionBuffer), drawReflectionBuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glGenFramebuffers(1, &app->refractionBuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->rtRefraction);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->rtRefraction, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->rtRefractionDepth, 0);
+
+    CheckFramebufferStatus();
+
+    GLuint drawRefractionBuffer[] = { GL_COLOR_ATTACHMENT0 };
+    glDrawBuffers(ARRAY_COUNT(drawRefractionBuffer), drawRefractionBuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+   
+
 	// Set default attachment
 	app->currentAttachment = "Main";
     app->renderSelector["BloomH"] = app->rtBloomH;
@@ -530,35 +599,9 @@ void InitFramebuffers(App* app)
 	app->renderSelector["Normal"] = app->normalAttachmentTexture;
 	app->renderSelector["Depth"] = app->depthAttachmentTexture;
 	app->renderSelector["Main"] = app->mainAttachmentTexture;
-
 	app->renderSelector["Bright"] = app->rtBright;
-
-	
-
-	//app->renderSelector["Ping"] = app->pingPongAttachmentTexture[0];
-	//app->renderSelector["Pong"] = app->pingPongAttachmentTexture[1];
-
-    //// Ping-pong buffer
-    //glGenFramebuffers(2, app->pingPongBuffer);
-    //glGenTextures(2, app->pingPongAttachmentTexture);
-
-    //for (int i = 0; i < 2; i++)
-    //{
-    //    glBindFramebuffer(GL_FRAMEBUFFER, app->pingPongBuffer[i]);
-
-    //    glBindTexture(GL_TEXTURE_2D, app->pingPongAttachmentTexture[i]);
-    //    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_FLOAT, NULL);
-    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->pingPongAttachmentTexture[i], 0);
-
-    //    CheckFramebufferStatus();
-
-    //    GLuint drawBuffersPingPong[] = { GL_COLOR_ATTACHMENT0 };
-    //    glDrawBuffers(ARRAY_COUNT(drawBuffersPingPong), drawBuffersPingPong);
-    //}
+	app->renderSelector["Reflection"] = app->rtReflection;
+	app->renderSelector["Refraction"] = app->rtRefraction;
 }
 
 void InitBloomMipmap(App* app) 
@@ -1066,6 +1109,10 @@ void Render(App* app)
 			glUseProgram(0);
 
             
+            // Water effect pass
+
+
+
             // Blur/Bloom
 			PassBlitBrightPixels(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->mainAttachmentTexture, app->valThreshold);
 

@@ -305,8 +305,15 @@ struct App
 	GLuint lightBuffer;
 	GLuint bloomBuffer;
 
-    // Framebuffer for Bloom
-    //GLuint pingPongBuffer[2];
+    // Textures for water effect
+	GLuint rtRefraction;
+	GLuint rtReflection;
+    GLuint rtRefractionDepth;
+	GLuint rtReflectionDepth;
+
+    // Buffer for water effect
+	GLuint reflectionBuffer;
+	GLuint refractionBuffer;
 
     
 
