@@ -17,6 +17,11 @@ typedef glm::ivec2 ivec2;
 typedef glm::ivec3 ivec3;
 typedef glm::ivec4 ivec4;
 
+enum WaterScenePart {
+    REFLECTION,
+    REFRACTION,
+};
+
 struct Image
 {
     void* pixels;
@@ -224,6 +229,7 @@ struct App
     u32 texturedMeshProgramIdx;
 	u32 debugLightProgramIdx;
 	u32 forwardProgramIdx;
+	u32 waterProgramIdx;
 
     u32 blitBrightestPixelProgramIdx;
 
@@ -260,7 +266,8 @@ struct App
 	GLuint lightProgram_uPosition;
     GLuint uProjectionMatrix; 
 	GLuint uLightColor;
-
+	
+   
     // Bloom uniforms
     GLuint colorMap;
     GLuint colorTexture; 
@@ -271,6 +278,13 @@ struct App
     GLuint maxLod;
 	GLuint mainTexture;
 	GLuint kernelRadius;
+	
+    //Water effect uniforms
+    GLuint waterProgram_uView; 
+	GLuint waterProgram_uProjection;
+    GLuint waterProgram_Worldspace;
+    GLuint waterProgram_uClipPlane;
+
 
 
 	// Color attachment of the framebuffer
@@ -376,7 +390,9 @@ u32 LoadTexture2D(App* app, const char* filepath);
 
 void InitCamera(App* app);
 
-void AlignUniformBuffers(App* app);
+void PassWaterScene(App* app, Camera* camera, GLenum colorAttachment, WaterScenePart part);
+
+void AlignUniformBuffers(App* app, Camera cam);
 
 void CameraMovement(App* app);
 
@@ -395,3 +411,5 @@ void GuiInspectorEntities(App* app);
 void GuiAddPrimitive(App* app);
 
 void GuiInspectorCamera(App* app);
+
+void CameraDirection(Camera& cam);

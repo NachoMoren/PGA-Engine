@@ -317,16 +317,16 @@ void Init(App* app)
 	psyduck.name = "Psyduck";
 	app->entities.push_back(psyduck);
 
-    // Pond scene
-	u32 pondModel = ModelHelper::LoadModel(app, "lp_pond.fbx");
-	Entity pond;
-	pond.position = vec3(0.0f, 0.0f, 0.0f);
-	pond.rotation = vec3(0.0f, 0.0f, 0.0f);
-	pond.scale = vec3(1.0f, 1.0f, 1.0f);
-	pond.modelIndex = pondModel;
-	pond.worldMatrix = TransformPositionRotationScale(pond.position, pond.rotation, pond.scale);
-	pond.name = "Pond";
-	app->entities.push_back(pond);
+ //   // Pond scene
+	//u32 pondModel = ModelHelper::LoadModel(app, "Pond/Pond.obj");
+	//Entity pond;
+	//pond.position = vec3(0.0f, -22.0f, 0.0f);
+	//pond.rotation = vec3(0.0f, 0.0f, 0.0f);
+	//pond.scale = vec3(0.2f, 0.2f, 0.2f);
+	//pond.modelIndex = pondModel;
+	//pond.worldMatrix = TransformPositionRotationScale(pond.position, pond.rotation, pond.scale);
+	//pond.name = "Pond";
+	//app->entities.push_back(pond);
 
     // Load plane  
 	Entity plane;
@@ -427,6 +427,12 @@ void Init(App* app)
 	app->mainTexture = glGetUniformLocation(app->programs[app->bloomProgramIdx].handle, "uMainTexture");
     app->colorMapBlend = glGetUniformLocation(app->programs[app->bloomProgramIdx].handle, "uColorMap");
     app->maxLod = glGetUniformLocation(app->programs[app->bloomProgramIdx].handle, "uMaxLod");
+
+	app->waterProgramIdx = LoadProgram(app, "shaders.glsl", "WATER_EFFECT");
+	app->waterProgram_uView = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uView");
+	app->waterProgram_uClipPlane = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uClipPlane");
+	app->waterProgram_uProjection = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uProjection");
+    app->waterProgram_Worldspace = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uWorldspace");
 	
     app->mode = Mode_Deferred;
 }
@@ -947,7 +953,7 @@ void Update(App* app)
     CameraMovement(app);
 	CameraLookAt(app);
 
-    AlignUniformBuffers(app);
+    AlignUniformBuffers(app, app->camera);
 }
 
 void Render(App* app)
@@ -1111,7 +1117,18 @@ void Render(App* app)
             
             // Water effect pass
 
+			glBindFramebuffer(GL_FRAMEBUFFER, app->reflectionBuffer);
+			Camera reflectionCamera = app->camera;
+			reflectionCamera.position.y *= -1.0f; // Reflect the camera position for reflection
+			reflectionCamera.pitch *= -1.0f; // Reflect the camera pitch for reflection
+			CameraDirection(reflectionCamera);
+			reflectionCamera.view = glm::lookAt(reflectionCamera.position, reflectionCamera.position + reflectionCamera.front, reflectionCamera.up);
 
+			AlignUniformBuffers(app, reflectionCamera);
+
+            PassWaterScene(app, &reflectionCamera,GL_COLOR_ATTACHMENT0, REFLECTION);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
             // Blur/Bloom
 			PassBlitBrightPixels(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->mainAttachmentTexture, app->valThreshold);
@@ -1185,13 +1202,42 @@ void Render(App* app)
     }
 }
 
-void AlignUniformBuffers(App* app)
+void PassWaterScene(App* app, Camera *camera, GLenum colorAttachment, WaterScenePart part) 
+{
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CLIP_DISTANCE0);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	Program& waterProgram = app->programs[app->waterProgramIdx];
+    glUseProgram(waterProgram.handle);
+
+    glm::mat4 viewMatrix = camera->view; 
+	glUniformMatrix4fv(app->waterProgram_uView, 1, GL_FALSE, &viewMatrix[0][0]);
+	glUniformMatrix4fv(app->waterProgram_uProjection, 1, GL_FALSE, &camera->projection[0][0]);
+    glm::vec3 eyeWorldspace = glm::inverse(camera->view) * glm::vec4(0.0, 0.0, 0.0, 1.0);
+    glUniform3fv(app->waterProgram_Worldspace, 1, &eyeWorldspace[0]);
+
+	glm::vec4 clipPlane = vec4(0.0f, 1.0f, 0.0f, 0.0f); // Default clip plane
+	glm::vec4 clipPlaneReflection = vec4(0.0f, -1.0f, 0.0f, 0.0f);
+
+    if(part == REFLECTION)
+		glUniform4fv(app->waterProgram_uClipPlane, 1, &clipPlane[0]);
+    else
+		glUniform4fv(app->waterProgram_uClipPlane, 1, &clipPlaneReflection[0]);
+
+	glUseProgram(0);
+    glDisable(GL_CLIP_DISTANCE0);
+}
+
+void AlignUniformBuffers(App* app , Camera cam)
 {
     BufferManagement::MapBuffer(app->localUniformBuffer, GL_WRITE_ONLY);
 
     // Light params
     app->globalParamsOffset = app->localUniformBuffer.head;
-	PushVec3(app->localUniformBuffer, app->camera.position);
+	PushVec3(app->localUniformBuffer, cam.position);
 	PushUInt(app->localUniformBuffer, app->lights.size());
 
     for (size_t i = 0; i < app->lights.size(); ++i) {
@@ -1212,7 +1258,7 @@ void AlignUniformBuffers(App* app)
 		Entity& entity = *it;
 		
 		glm::mat4 worldMatrix = entity.worldMatrix;
-		glm::mat4 worldViewProjection = app->camera.projection * app->camera.view * worldMatrix;
+		glm::mat4 worldViewProjection = cam.projection * cam.view * worldMatrix;
 
         entity.localParamsOffset = app->localUniformBuffer.head;
 		PushMat4(app->localUniformBuffer, worldMatrix);
@@ -1227,7 +1273,7 @@ void AlignUniformBuffers(App* app)
 void InitCamera(App* app) {
     app->camera.aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
     app->camera.zNear = 0.1f;
-    app->camera.zFar = 100.0f;
+    app->camera.zFar = 600.0f;
 	app->camera.fov = 60.0f;
 
 	app->camera.position = vec3(1.1, 10.5, 15.39);
@@ -1304,14 +1350,19 @@ void CameraLookAt(App* app)
 		if (app->camera.pitch < -89.0f)
 			app->camera.pitch = -89.0f;
 
-        glm::vec3 direction; 
-		direction.x = cos(glm::radians(app->camera.yaw)) * cos(glm::radians(app->camera.pitch));
-		direction.y = sin(glm::radians(app->camera.pitch));
-		direction.z = sin(glm::radians(app->camera.yaw)) * cos(glm::radians(app->camera.pitch));
-		app->camera.front = glm::normalize(direction);  
-		app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.up));
+		CameraDirection(app->camera);
 		
     }
+}
+
+void CameraDirection(Camera& cam) 
+{
+    glm::vec3 direction;
+    direction.x = cos(glm::radians(cam.yaw)) * cos(glm::radians(cam.pitch));
+    direction.y = sin(glm::radians(cam.pitch));
+    direction.z = sin(glm::radians(cam.yaw)) * cos(glm::radians(cam.pitch));
+    cam.front = glm::normalize(direction);
+    cam.right = glm::normalize(glm::cross(cam.front, cam.up));
 }
 
 void GuiAddLights(App* app) 
