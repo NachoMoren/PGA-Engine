@@ -267,6 +267,8 @@ struct App
 	GLuint threshold;
     GLuint inputLod; 
     GLuint dir; 
+    GLuint colorMapBlend;
+    GLuint maxLod;
 
 
 	// Color attachment of the framebuffer
@@ -277,7 +279,7 @@ struct App
 	GLuint mainAttachmentTexture;
 
 	GLuint blitAttachmentTexture;
-    GLuint pingPongAttachmentTexture[2];
+    GLuint bloomAttachmentTexture;
 
     // Render selector
 	std::unordered_map<std::string, GLuint> renderSelector;
@@ -351,6 +353,8 @@ void Render(App* app);
 void PassBlur(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint texture, GLint inputLod, int dirX, int dirY);
 
 void PassBlitBrightPixels(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint texture, float threshold);
+
+void PassBloom(App* app, u32 fbo, GLenum colorAttachment, GLuint texture, int maxLod);
 
 u32 LoadTexture2D(App* app, const char* filepath);
 

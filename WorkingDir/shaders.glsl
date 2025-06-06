@@ -144,6 +144,7 @@
 	};
 
 	layout(location = 0) out vec4 oColor;
+	layout(location = 1) out vec4 oBloom;
 
 	layout(binding = 0, std140) uniform GlobalParams
 	{
@@ -220,6 +221,7 @@
 			
 		}
 		oColor = vec4(lightColor, 1.0);
+		oBloom = oColor;
 		
 	}
 
@@ -246,34 +248,20 @@
 
 		out vec4 FragColor;
   
-		in vec2 TexCoords;
+		in vec2 vTexCoord;
 
-		uniform sampler2D uImage;
-  
-		uniform bool horizontal;
-		uniform float weight[5] = float[] (0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
+		uniform sampler2D uColorMap;
+		uniform int uMaxLod;
 
 		void main()
 		{             
-			vec2 tex_offset = 1.0 / textureSize(uImage, 0); // gets size of single texel
-			vec3 result = texture(uImage, TexCoords).rgb * weight[0]; // current fragment's contribution
-			if(horizontal)
+			FragColor = vec4(0.0);
+			for (int lod = 0; lod < uMaxLod; ++lod)
 			{
-				for(int i = 1; i < 5; ++i)
-				{
-					result += texture(uImage, TexCoords + vec2(tex_offset.x * i, 0.0)).rgb * weight[i];
-					result += texture(uImage, TexCoords - vec2(tex_offset.x * i, 0.0)).rgb * weight[i];
-				}
+				FragColor += textureLod(uColorMap, vTexCoord, float(lod));
 			}
-			else
-			{
-				for(int i = 1; i < 5; ++i)
-				{
-					result += texture(uImage, TexCoords + vec2(0.0, tex_offset.y * i)).rgb * weight[i];
-					result += texture(uImage, TexCoords - vec2(0.0, tex_offset.y * i)).rgb * weight[i];
-				}
-			}
-			FragColor = vec4(result, 1.0);
+			FragColor.a = 1.0f;
+			//FragColor = vec4(1.0f);
 		}
 
 	#endif
