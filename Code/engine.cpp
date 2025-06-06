@@ -1214,6 +1214,10 @@ void Render(App* app)
 
 void PassWaterScene(App* app, Camera *camera, GLenum colorAttachment, WaterScenePart part) 
 {
+    glBindFramebuffer(GL_FRAMEBUFFER, app->reflectionBuffer);
+    glDrawBuffers(1, &colorAttachment);
+    glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CLIP_DISTANCE0);
 
@@ -1222,6 +1226,7 @@ void PassWaterScene(App* app, Camera *camera, GLenum colorAttachment, WaterScene
 
 	Program& waterProgram = app->programs[app->waterProgramIdx];
     glUseProgram(waterProgram.handle);
+
 
     glm::mat4 viewMatrix = camera->view; 
     glUniform2f(app->waterProgram_viewportSize, app->displaySize.x, app->displaySize.y);
@@ -1255,6 +1260,12 @@ void PassWaterScene(App* app, Camera *camera, GLenum colorAttachment, WaterScene
 	glActiveTexture(GL_TEXTURE5);
 	glBindTexture(GL_TEXTURE_2D, app->dudvWaterTex);
 	glUniform1i(app->waterProgram_dudvMap, 5);
+
+    glBindVertexArray(app->vao);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+    glBindVertexArray(0);
 
 	glUseProgram(0);
     glDisable(GL_CLIP_DISTANCE0);
