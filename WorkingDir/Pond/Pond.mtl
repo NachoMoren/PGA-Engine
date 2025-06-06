@@ -1,0 +1,120 @@
+newmtl Box026SG
+illum 4
+Kd 0.04 0.04 0.03
+Ka 0.04 0.04 0.03
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.11 0.11 0.11
+Ns 0.83
+newmtl Box027SG
+illum 4
+Kd 0.12 0.18 0.01
+Ka 0.12 0.18 0.01
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.17 0.17 0.17
+Ns 2.59
+newmtl Cone010SG
+illum 4
+Kd 0.11 0.20 0.10
+Ka 0.11 0.20 0.10
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.17 0.17 0.17
+Ns 2.59
+newmtl Cone010SG1
+illum 4
+Kd 0.15 0.08 0.04
+Ka 0.15 0.08 0.04
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.11 0.11 0.11
+Ns 0.83
+newmtl GeoSphere018SG
+illum 4
+Kd 0.18 0.28 0.13
+Ka 0.18 0.28 0.13
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.17 0.17 0.17
+Ns 2.59
+newmtl GeoSphere019SG
+illum 4
+Kd 0.24 0.37 0.17
+Ka 0.24 0.37 0.17
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.17 0.17 0.17
+Ns 2.59
+newmtl GeoSphere019SG1
+illum 4
+Kd 0.15 0.12 0.08
+Ka 0.15 0.12 0.08
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.11 0.11 0.11
+Ns 0.83
+newmtl GeoSphere022SG
+illum 4
+Kd 0.23 0.24 0.22
+Ka 0.23 0.24 0.22
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.17 0.17 0.17
+Ns 2.59
+newmtl Plane040SG
+illum 4
+Kd 0.05 0.13 0.02
+Ka 0.05 0.13 0.02
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.17 0.17 0.17
+Ns 2.59
+newmtl grassSG
+illum 4
+Kd 0.18 0.53 0.20
+Ka 0.18 0.53 0.20
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.17 0.17 0.17
+Ns 2.59
+newmtl grassSG1
+illum 4
+Kd 0.16 0.12 0.06
+Ka 0.16 0.12 0.06
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.11 0.11 0.11
+Ns 0.83
+newmtl lakeSG
+illum 4
+Kd 0.09 0.13 0.62
+Ka 0.09 0.13 0.62
+Tf 0.45 0.45 0.45
+Ni 1.00
+Ks 0.69 0.69 0.69
+Ns 7.19
+newmtl lillySG
+illum 4
+Kd 1.00 1.00 0.68
+Ka 1.00 1.00 0.68
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.17 0.17 0.17
+Ns 2.59
+newmtl lillySG1
+illum 4
+Kd 0.99 1.00 0.08
+Ka 0.99 1.00 0.08
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.17 0.17 0.17
+Ns 2.59
+newmtl path7SG
+illum 4
+Kd 0.15 0.14 0.11
+Ka 0.15 0.14 0.11
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.11 0.11 0.11
+Ns 0.83
