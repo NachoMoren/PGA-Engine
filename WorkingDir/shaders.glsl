@@ -299,7 +299,7 @@
 
 		out vec4 FragColor;
   
-		in vec2 TexCoords;
+		in vec2 vTexCoord;
 
 		uniform sampler2D uColorMap;
 		uniform vec2 uDir; 
@@ -318,21 +318,19 @@
 			int coord = int(directionFragCoord.x + directionFragCoord.y);
 			vec2 directionTexSize = texelSize * uDir;
 			int size = int(directionTexSize.x + directionTexSize.y);
-			int kernelRadius = 24; 
-			int kernelBegin = -min(kernelRadius, coord);
-			int kernelEnd = min(kernelRadius, size - coord);
+			int kernelRadius = 24;
 			float weight = 0.0;
+			FragColor = vec4(0.0);
 
-			for (int i = kernelBegin; i <= kernelEnd; i++)
-			{
-				float currentWeight = smoothstep(float(kernelRadius), 0.0, float(abs(1)));
-				vec2 finalTexCoords = TexCoords + i * uDir * texelSize;
-				finalTexCoords = clamp(finalTexCoords, margin1, margin2);
-				FragColor += textureLod(uColorMap, finalTexCoords, uInputLod) * currentWeight;
-				weight += currentWeight;
+			for (int i = -kernelRadius; i <= kernelRadius; i++) {
+				float w = smoothstep(0.0, float(kernelRadius), float(kernelRadius - abs(i)));
+				vec2 offset = uDir * texelSize * float(i);
+				vec2 sampleCoord = clamp(vTexCoord + offset, margin1, margin2);
+				FragColor += textureLod(uColorMap, sampleCoord, uInputLod) * w;
+				weight += w;
 			}
 
-			FragColor = FragColor / weight;
+			FragColor /= weight;
 		}
 
 	#endif

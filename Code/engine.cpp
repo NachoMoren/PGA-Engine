@@ -1002,23 +1002,25 @@ void Render(App* app)
 			float threshold = 1.0f;
 			PassBlitBrightPixels(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->mainAttachmentTexture, threshold);
 
+            glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, app->rtBright);
 			glGenerateMipmap(GL_TEXTURE_2D);
 
             // horizontal blur
 			PassBlur(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT1, app->rtBright, 0, 1, 0);
-			//PassBlur(app, app->fboBloom2, app->displaySize.x / 4, app->displaySize.y / 4, GL_COLOR_ATTACHMENT1, app->rtBright, 1, 1, 0);
-   //         PassBlur(app, app->fboBloom3, app->displaySize.x / 8, app->displaySize.y / 8, GL_COLOR_ATTACHMENT1, app->rtBright, 2, 1, 0);
-			//PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT1, app->rtBright, 3, 1, 0);
-			//PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT1, app->rtBright, 4, 1, 0);
+			PassBlur(app, app->fboBloom2, app->displaySize.x / 4, app->displaySize.y / 4, GL_COLOR_ATTACHMENT1, app->rtBright, 1, 1, 0);
+            PassBlur(app, app->fboBloom3, app->displaySize.x / 8, app->displaySize.y / 8, GL_COLOR_ATTACHMENT1, app->rtBright, 2, 1, 0);
+			PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT1, app->rtBright, 3, 1, 0);
+			PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT1, app->rtBright, 4, 1, 0);
 
-			//// vertical blur
-			//PassBlur(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->rtBloomH, 0, 0, 1);
-			//PassBlur(app, app->fboBloom2, app->displaySize.x / 4, app->displaySize.y / 4, GL_COLOR_ATTACHMENT0, app->rtBloomH, 1, 0, 1);
-			//PassBlur(app, app->fboBloom3, app->displaySize.x / 8, app->displaySize.y / 8, GL_COLOR_ATTACHMENT0, app->rtBloomH, 2, 0, 1);
-			//PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT0, app->rtBloomH, 3, 0, 1);
-			//PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT0, app->rtBloomH, 4, 0, 1);
+			// vertical blur
+			PassBlur(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->rtBloomH, 0, 0, 1);
+			PassBlur(app, app->fboBloom2, app->displaySize.x / 4, app->displaySize.y / 4, GL_COLOR_ATTACHMENT0, app->rtBloomH, 1, 0, 1);
+			PassBlur(app, app->fboBloom3, app->displaySize.x / 8, app->displaySize.y / 8, GL_COLOR_ATTACHMENT0, app->rtBloomH, 2, 0, 1);
+			PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT0, app->rtBloomH, 3, 0, 1);
+			PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT0, app->rtBloomH, 4, 0, 1);
 
+            
 			
             // Show lights for debug
             Program& debugLightProgram = app->programs[app->debugLightProgramIdx];
