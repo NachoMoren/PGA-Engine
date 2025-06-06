@@ -269,6 +269,7 @@ struct App
     GLuint dir; 
     GLuint colorMapBlend;
     GLuint maxLod;
+	GLuint mainTexture;
 
 
 	// Color attachment of the framebuffer

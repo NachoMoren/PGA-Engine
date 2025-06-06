@@ -250,18 +250,21 @@
   
 		in vec2 vTexCoord;
 
+		uniform sampler2D uMainTexture;
 		uniform sampler2D uColorMap;
 		uniform int uMaxLod;
 
 		void main()
 		{             
-			FragColor = vec4(0.0);
-			for (int lod = 0; lod < uMaxLod; ++lod)
-			{
-				FragColor += textureLod(uColorMap, vTexCoord, float(lod));
-			}
-			FragColor.a = 1.0f;
-			//FragColor = vec4(1.0f);
+			const float gamma = 2.2;
+			vec3 color = texture(uMainTexture, vTexCoord).rgb;
+			vec3 bloomColor = texture(uColorMap, vTexCoord).rgb;
+			color += bloomColor;
+
+			//vec3 result = vec3(1.0) - exp(-color * uMaxLod);
+
+			//result = pow(result, vec3(1.0 / gamma)); 
+			FragColor = vec4(color, 1.0);
 		}
 
 	#endif

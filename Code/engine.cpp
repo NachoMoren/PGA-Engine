@@ -411,6 +411,7 @@ void Init(App* app)
 	app->inputLod = glGetUniformLocation(app->programs[app->blurProgramIdx].handle, "uInputLod");
 
     app->bloomProgramIdx = LoadProgram(app, "shaders.glsl", "BLOOM");
+	app->mainTexture = glGetUniformLocation(app->programs[app->bloomProgramIdx].handle, "uMainTexture");
     app->colorMapBlend = glGetUniformLocation(app->programs[app->bloomProgramIdx].handle, "uColorMap");
     app->maxLod = glGetUniformLocation(app->programs[app->bloomProgramIdx].handle, "uMaxLod");
 	
@@ -737,12 +738,15 @@ void PassBloom(App* app, u32 fbo, GLenum colorAttachment, GLuint texture, int ma
     glUseProgram(bloomProgram.handle);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glBindTexture(GL_TEXTURE_2D, app->mainAttachmentTexture);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, texture);
 
     glBindVertexArray(app->vao);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
 
-    glUniform1i(app->colorMapBlend, 0);
+	glUniform1i(app->mainTexture, 0); 
+    glUniform1i(app->colorMapBlend, 1);
     glUniform1i(app->maxLod, maxLod);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
@@ -1059,12 +1063,6 @@ void Render(App* app)
 			PassBlur(app, app->fboBloom3, app->displaySize.x / 8, app->displaySize.y / 8, GL_COLOR_ATTACHMENT0, app->rtBloomH, 2, 0, 1);
 			PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT0, app->rtBloomH, 3, 0, 1);
 			PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT0, app->rtBloomH, 4, 0, 1);
-
-			glActiveTexture(GL_TEXTURE0);   
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, app->lightBuffer);
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, app->bloomBuffer);
-
-            glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.y, 0, 0, app->displaySize.x, app->displaySize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
             PassBloom(app, app->bloomBuffer, GL_COLOR_ATTACHMENT0, app->rtBright, MIPMAP_MAX_LEVEL);
 
