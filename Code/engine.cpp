@@ -408,7 +408,9 @@ void Init(App* app)
 	app->blurProgramIdx = LoadProgram(app, "shaders.glsl", "BLUR");
 	app->colorMap = glGetUniformLocation(app->programs[app->blurProgramIdx].handle, "uColorMap");
     app->dir = glGetUniformLocation(app->programs[app->blurProgramIdx].handle, "uDir");
+	app->kernelRadius = glGetUniformLocation(app->programs[app->blurProgramIdx].handle, "kernelRadius");
 	app->inputLod = glGetUniformLocation(app->programs[app->blurProgramIdx].handle, "uInputLod");
+	app->inputLodIntensity = glGetUniformLocation(app->programs[app->blurProgramIdx].handle, "uLodIntensity");
 
     app->bloomProgramIdx = LoadProgram(app, "shaders.glsl", "BLOOM");
 	app->mainTexture = glGetUniformLocation(app->programs[app->bloomProgramIdx].handle, "uMainTexture");
@@ -521,13 +523,14 @@ void InitFramebuffers(App* app)
 
 	// Set default attachment
 	app->currentAttachment = "Main";
+    app->renderSelector["BloomH"] = app->rtBloomH;
 	app->renderSelector["Color"] = app->colorAttachmentTexture;
 	app->renderSelector["Bloom"] = app->bloomAttachmentTexture;
 	app->renderSelector["Position"] = app->positionAttachmentTexture;
 	app->renderSelector["Normal"] = app->normalAttachmentTexture;
 	app->renderSelector["Depth"] = app->depthAttachmentTexture;
 	app->renderSelector["Main"] = app->mainAttachmentTexture;
-	app->renderSelector["BloomH"] = app->rtBloomH;
+
 	app->renderSelector["Bright"] = app->rtBright;
 
 	
@@ -663,7 +666,7 @@ void CheckFramebufferStatus() {
     }
 }
 
-void PassBlur(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint texture, GLint inputLod, int dirX, int dirY) 
+void PassBlur(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint texture, GLint inputLod, int dirX, int dirY, float inputLodIntensity) 
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 	glDrawBuffers(1, &colorAttachment);
@@ -686,6 +689,8 @@ void PassBlur(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint te
 	glUniform1i(app->colorMap, 0);
     glUniform2f(app->dir, dirX, dirY);
 	glUniform1i(app->inputLod, inputLod);
+	glUniform1i(app->kernelRadius, app->kernelRad);
+	glUniform1f(app->inputLodIntensity, inputLodIntensity);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
     glBindVertexArray(0);
@@ -752,7 +757,8 @@ void PassBloom(App* app, u32 fbo, GLenum colorAttachment, GLuint texture, int ma
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
     glBindVertexArray(0);
 
-    glDisable(GL_BLEND);
+	glEnable(GL_DEPTH);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glUseProgram(0);
 }
 
@@ -858,6 +864,24 @@ void Gui(App* app)
         }
         ImGui::Separator();
     }
+
+    ImGui::Text("Bloom Variables");
+    ImGui::Text("Bloom Threshold");
+    ImGui::SameLine();
+	ImGui::SliderFloat("##Bloom Threshold", &app->valThreshold, 0.0f, 1.0f);
+	ImGui::Text("Kernel Radius");
+	ImGui::SameLine();
+	ImGui::InputInt("##Kernel Raduis", &app->kernelRad, 1, 72);
+    for (int i = 0; i < 5; ++i) {
+		ImGui::Text("LOD %d Intensity", i);
+		ImGui::SameLine();
+		ImGui::SliderFloat(("##LOD " + std::to_string(i) + " Intensity").c_str(), &app->intensities[i], 0.0f, 4.0f);
+    }
+	ImGui::Separator();
+
+	
+
+	
 	GuiInspectorCamera(app);
     GuiInspectorEntities(app);
 	GuiInspectorLights(app);
@@ -886,7 +910,7 @@ void Update(App* app)
 void Render(App* app)
 {
 
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glViewport(0, 0, app->displaySize.x, app->displaySize.y);
@@ -972,7 +996,7 @@ void Render(App* app)
         {
 			// Geometry Pass
 			glBindFramebuffer(GL_FRAMEBUFFER, app->gBuffer);
-            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glEnable(GL_DEPTH_TEST);
 
@@ -1010,7 +1034,7 @@ void Render(App* app)
 			// Light Pass
 			glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
 
-            glClearColor(0.1, 0.1, 0.1, 1.0);
+            glClearColor(0.0, 0.0, 0.0, 1.0);
             glClear(GL_COLOR_BUFFER_BIT);
 
 			Program& lightProgram = app->programs[app->lightProgramIdx];
@@ -1043,30 +1067,30 @@ void Render(App* app)
 
             
             // Blur/Bloom
-			float threshold = 1.0f;
-			PassBlitBrightPixels(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->mainAttachmentTexture, threshold);
+			PassBlitBrightPixels(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->mainAttachmentTexture, app->valThreshold);
 
             glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, app->rtBright);
 			glGenerateMipmap(GL_TEXTURE_2D);
 
             // horizontal blur
-			PassBlur(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT1, app->rtBright, 0, 1, 0);
-			PassBlur(app, app->fboBloom2, app->displaySize.x / 4, app->displaySize.y / 4, GL_COLOR_ATTACHMENT1, app->rtBright, 1, 1, 0);
-            PassBlur(app, app->fboBloom3, app->displaySize.x / 8, app->displaySize.y / 8, GL_COLOR_ATTACHMENT1, app->rtBright, 2, 1, 0);
-			PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT1, app->rtBright, 3, 1, 0);
-			PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT1, app->rtBright, 4, 1, 0);
+			PassBlur(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT1, app->rtBright, 0, 1, 0, app->intensities[0]);
+			PassBlur(app, app->fboBloom2, app->displaySize.x / 4, app->displaySize.y / 4, GL_COLOR_ATTACHMENT1, app->rtBright, 1, 1, 0, app->intensities[1]);
+            PassBlur(app, app->fboBloom3, app->displaySize.x / 8, app->displaySize.y / 8, GL_COLOR_ATTACHMENT1, app->rtBright, 2, 1, 0, app->intensities[2]);
+			PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT1, app->rtBright, 3, 1, 0, app->intensities[3]);
+			PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT1, app->rtBright, 4, 1, 0, app->intensities[4]);
 
 			// vertical blur
-			PassBlur(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->rtBloomH, 0, 0, 1);
-			PassBlur(app, app->fboBloom2, app->displaySize.x / 4, app->displaySize.y / 4, GL_COLOR_ATTACHMENT0, app->rtBloomH, 1, 0, 1);
-			PassBlur(app, app->fboBloom3, app->displaySize.x / 8, app->displaySize.y / 8, GL_COLOR_ATTACHMENT0, app->rtBloomH, 2, 0, 1);
-			PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT0, app->rtBloomH, 3, 0, 1);
-			PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT0, app->rtBloomH, 4, 0, 1);
+			PassBlur(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->rtBloomH, 0, 0, 1, app->intensities[0]);
+			PassBlur(app, app->fboBloom2, app->displaySize.x / 4, app->displaySize.y / 4, GL_COLOR_ATTACHMENT0, app->rtBloomH, 1, 0, 1, app->intensities[1]);
+			PassBlur(app, app->fboBloom3, app->displaySize.x / 8, app->displaySize.y / 8, GL_COLOR_ATTACHMENT0, app->rtBloomH, 2, 0, 1, app->intensities[2]);
+			PassBlur(app, app->fboBloom4, app->displaySize.x / 16, app->displaySize.y / 16, GL_COLOR_ATTACHMENT0, app->rtBloomH, 3, 0, 1, app->intensities[3]);
+			PassBlur(app, app->fboBloom5, app->displaySize.x / 32, app->displaySize.y / 32, GL_COLOR_ATTACHMENT0, app->rtBloomH, 4, 0, 1, app->intensities[4]);
 
             PassBloom(app, app->bloomBuffer, GL_COLOR_ATTACHMENT0, app->rtBright, MIPMAP_MAX_LEVEL);
-
-           
+            
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
 			
             // Show lights for debug
             Program& debugLightProgram = app->programs[app->debugLightProgramIdx];

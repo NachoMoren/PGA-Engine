@@ -270,6 +270,7 @@ struct App
     GLuint colorMapBlend;
     GLuint maxLod;
 	GLuint mainTexture;
+	GLuint kernelRadius;
 
 
 	// Color attachment of the framebuffer
@@ -328,6 +329,12 @@ struct App
 	int directionalLightCount = 0;
 	int pointLightCount = 0;
     int primitiveCount = 0;
+
+    // Cusatom variables
+	float valThreshold = 1.0f; 
+    int kernelRad = 24; 
+    float inputLodIntensity = 1.0f;
+	float intensities[5]  = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
 	
     // primitives
     std::vector<std::string> primitives = {"Cube", "Sphere","Cone", "Cylinder","Plane", "Torus" };
@@ -352,7 +359,7 @@ void Update(App* app);
 
 void Render(App* app);
 
-void PassBlur(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint texture, GLint inputLod, int dirX, int dirY);
+void PassBlur(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint texture, GLint inputLod, int dirX, int dirY, float inputLodIntensity = 1.0);
 
 void PassBlitBrightPixels(App* app, u32 fbo, int w, int h, GLenum colorAttachment, GLuint texture, float threshold);
 

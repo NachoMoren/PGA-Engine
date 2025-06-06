@@ -255,15 +255,15 @@
 		uniform int uMaxLod;
 
 		void main()
-		{             
-			const float gamma = 2.2;
+		{    
 			vec3 color = texture(uMainTexture, vTexCoord).rgb;
-			vec3 bloomColor = texture(uColorMap, vTexCoord).rgb;
+			vec3 bloomColor = vec3(0.0);
+			for (int lod = 0; lod < uMaxLod; ++lod) {
+				bloomColor += textureLod(uColorMap, vTexCoord, lod).rgb;
+			}
+			bloomColor /= float(uMaxLod); // optional: average the bloom
+
 			color += bloomColor;
-
-			//vec3 result = vec3(1.0) - exp(-color * uMaxLod);
-
-			//result = pow(result, vec3(1.0 / gamma)); 
 			FragColor = vec4(color, 1.0);
 		}
 
@@ -295,6 +295,8 @@
 		uniform sampler2D uColorMap;
 		uniform vec2 uDir; 
 		uniform int uInputLod;
+		uniform int kernelRadius; 
+		uniform float uLodIntensity;
 
 		void main()
 		{             
@@ -309,7 +311,6 @@
 			int coord = int(directionFragCoord.x + directionFragCoord.y);
 			vec2 directionTexSize = texelSize * uDir;
 			int size = int(directionTexSize.x + directionTexSize.y);
-			int kernelRadius = 24;
 			float weight = 0.0;
 			FragColor = vec4(0.0);
 
@@ -317,7 +318,7 @@
 				float w = smoothstep(0.0, float(kernelRadius), float(kernelRadius - abs(i)));
 				vec2 offset = uDir * texelSize * float(i);
 				vec2 sampleCoord = clamp(vTexCoord + offset, margin1, margin2);
-				FragColor += textureLod(uColorMap, sampleCoord, uInputLod) * w;
+				FragColor += textureLod(uColorMap, sampleCoord, uInputLod) * w * uLodIntensity;
 				weight += w;
 			}
 
