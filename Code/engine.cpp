@@ -284,6 +284,9 @@ void Init(App* app)
 	app->blackTexIdx = LoadTexture2D(app, "color_black.png");
 	app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
 
+	app->normalWaterTex = LoadTexture2D(app, "Water/normalmap.dds");
+	app->dudvWaterTex = LoadTexture2D(app, "Water/dudvmap.dds");   
+
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
     app->localUniformBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
@@ -1233,6 +1236,25 @@ void PassWaterScene(App* app, Camera *camera, GLenum colorAttachment, WaterScene
 		glUniform4fv(app->waterProgram_uClipPlane, 1, glm::value_ptr(clipPlane));
     else
 		glUniform4fv(app->waterProgram_uClipPlane, 1, glm::value_ptr(clipPlaneReflection));
+
+	glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, app->rtReflection); 
+	glUniform1i(app->waterProgram_uReflectionMap, 0);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, app->rtRefraction);
+	glUniform1i(app->waterProgram_uRefractionMap, 1);
+    glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, app->rtReflectionDepth);
+    glUniform1i(app->waterProgram_uReflectionDepth, 2);
+	glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, app->rtRefractionDepth);
+	glUniform1i(app->waterProgram_uRefractionDepth, 3);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, app->normalWaterTex);
+	glUniform1i(app->waterProgram_normalMap, 4);
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, app->dudvWaterTex);
+	glUniform1i(app->waterProgram_dudvMap, 5);
 
 	glUseProgram(0);
     glDisable(GL_CLIP_DISTANCE0);
