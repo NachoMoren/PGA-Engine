@@ -1234,11 +1234,11 @@ void Render(App* app)
             glm::mat4 view = glm::mat4(glm::mat3(app->camera.view)); // remove translation from the view matrix
             glUniformMatrix4fv(app->uSkyboxView, 1, GL_FALSE, glm::value_ptr(view));
             glUniformMatrix4fv(app->uSkyboxProjection, 1, GL_FALSE, &app->camera.projection[0][0]);
-            glUniform1i(app->uSkybox, 0);
+            glUniform1i(app->uSkybox, 9);
 
             // skybox cube
             glBindVertexArray(app->skyboxVAO);
-            glActiveTexture(GL_TEXTURE0);
+            glActiveTexture(GL_TEXTURE9);
             glBindTexture(GL_TEXTURE_CUBE_MAP, app->rtCubemap);
             glDrawArrays(GL_TRIANGLES, 0, 36);
             glBindVertexArray(0);

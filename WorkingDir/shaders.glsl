@@ -431,10 +431,10 @@
 		const vec2 waveStrength = vec2(0.05);
 		const float turbidityDistance = 10.0;
 
-		//vec2 distortion = (2.0 * texture(uDudvMap, Pw.xz / waveLength).rg - vec2(1.0)) * waveStrength + waveStrength/7.0;
+		vec2 distortion = (2.0 * texture(uDudvMap, Pw.xz / waveLength).rg - vec2(1.0)) * waveStrength + waveStrength/7.0;
 
-		vec2 reflectionTexCoord = vec2(texCoord.s, 1.0 - texCoord.t);
-		vec2 refractionTexCoord = texCoord;
+		vec2 reflectionTexCoord = vec2(texCoord.s, 1.0 - texCoord.t) + distortion;
+		vec2 refractionTexCoord = texCoord + distortion;
 		vec3 reflectionColor = texture(uReflectionMap, reflectionTexCoord).rgb;
 		vec3 refractionColor = texture(uRefractionMap, refractionTexCoord).rgb;
 
