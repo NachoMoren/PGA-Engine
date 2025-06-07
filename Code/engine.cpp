@@ -331,15 +331,15 @@ void Init(App* app)
 	pond.name = "Pond";
 	app->entities.push_back(pond);
 
-    // Load plane  
-	Entity plane;
-	plane.position = vec3(0.0f, 0.0f, 0.0f);
-	plane.rotation = vec3(0.0f, 0.0f, 0.0f);
-	plane.scale = vec3(20.0f, 1.0f, 20.0f);
-	plane.modelIndex = app->primitiveIdxs[4];
-	plane.worldMatrix = TransformPositionRotationScale(plane.position, plane.rotation, plane.scale);
-	plane.name = "Plane";
-	app->entities.push_back(plane);
+ //   // Load plane  
+	//Entity plane;
+	//plane.position = vec3(0.0f, 0.0f, 0.0f);
+	//plane.rotation = vec3(0.0f, 0.0f, 0.0f);
+	//plane.scale = vec3(20.0f, 1.0f, 20.0f);
+	//plane.modelIndex = app->primitiveIdxs[4];
+	//plane.worldMatrix = TransformPositionRotationScale(plane.position, plane.rotation, plane.scale);
+	//plane.name = "Plane";
+	//app->entities.push_back(plane);
 
 	// Load sphere
 	Entity sphere;
@@ -1360,7 +1360,7 @@ void AlignUniformBuffers(App* app , Camera cam, bool reflection)
     // Clipping plane as binding
 	BufferManagement::AlignHead(app->localUniformBuffer, app->uniformBlockAlignment);
 	app->clippingPlaneOffset = app->localUniformBuffer.head;
-	PushMat4(app->localUniformBuffer, cam.view);
+
 	if (reflection) {
 		PushVec4(app->localUniformBuffer, vec4(0.0f, 1.0f, 0.0f, -app->waterPos.y)); // Reflective plane
 	}
