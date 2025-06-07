@@ -1122,7 +1122,7 @@ void Render(App* app)
 			// Reflection
 			glBindFramebuffer(GL_FRAMEBUFFER, app->reflectionBuffer);
 			Camera reflectionCamera = app->camera;
-			reflectionCamera.position.y *= -1.0f; 
+			reflectionCamera.position.y = 2 * (app->camera.position.y - app->waterPos.y); 
 			reflectionCamera.pitch *= -1.0f; 
 			CameraDirection(reflectionCamera);
 			reflectionCamera.view = glm::lookAt(reflectionCamera.position, reflectionCamera.position + reflectionCamera.front, reflectionCamera.up);
@@ -1130,6 +1130,7 @@ void Render(App* app)
 			AlignUniformBuffers(app, reflectionCamera, true);
 
             PassWaterScene(app,reflectionCamera, app->reflectionBuffer, WaterScenePart::REFLECTION);
+			RenderSkybox(app, reflectionCamera);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
             // Refraction
@@ -1222,30 +1223,7 @@ void Render(App* app)
 			glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.y, 0, 0, app->displaySize.x, app->displaySize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 			glUseProgram(0);
 
-            //Skybox pass
-            glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
-
-            glDepthMask(GL_FALSE);             // Disable depth writing
-            glEnable(GL_DEPTH_TEST);           // Still test depth
-            glDepthFunc(GL_LEQUAL);            // Allow equal depth to show background
-
-            Program& skyboxProgram = app->programs[app->cubemapProgramIdx];
-            glUseProgram(skyboxProgram.handle);
-            glm::mat4 view = glm::mat4(glm::mat3(app->camera.view)); // remove translation from the view matrix
-            glUniformMatrix4fv(app->uSkyboxView, 1, GL_FALSE, glm::value_ptr(view));
-            glUniformMatrix4fv(app->uSkyboxProjection, 1, GL_FALSE, &app->camera.projection[0][0]);
-            glUniform1i(app->uSkybox, 9);
-
-            // skybox cube
-            glBindVertexArray(app->skyboxVAO);
-            glActiveTexture(GL_TEXTURE9);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, app->rtCubemap);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-            glBindVertexArray(0);
-            
-            glDepthMask(GL_TRUE);
-            glDepthFunc(GL_LESS);
-            glUseProgram(0);
+            RenderSkybox(app, app->camera);
 
             // Blur/Bloom
 			PassBlitBrightPixels(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->mainAttachmentTexture, app->valThreshold);
@@ -1664,4 +1642,32 @@ void PassWaterScene(App* app, Camera camera, GLuint fbo, WaterScenePart part)
 	DrawScene(app, app->texturedMeshProgramIdx, fbo, camera, part);
 
 	glDisable(GL_CLIP_DISTANCE0);
+}
+
+void RenderSkybox(App* app, Camera camera) 
+{
+    //Skybox pass
+    //glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
+
+    glDepthMask(GL_FALSE);             // Disable depth writing
+    glEnable(GL_DEPTH_TEST);           // Still test depth
+    glDepthFunc(GL_LEQUAL);            // Allow equal depth to show background
+
+    Program& skyboxProgram = app->programs[app->cubemapProgramIdx];
+    glUseProgram(skyboxProgram.handle);
+    glm::mat4 view = glm::mat4(glm::mat3(camera.view)); // remove translation from the view matrix
+    glUniformMatrix4fv(app->uSkyboxView, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(app->uSkyboxProjection, 1, GL_FALSE, &camera.projection[0][0]);
+    glUniform1i(app->uSkybox, 9);
+
+    // skybox cube
+    glBindVertexArray(app->skyboxVAO);
+    glActiveTexture(GL_TEXTURE9);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, app->rtCubemap);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LESS);
+    glUseProgram(0);
 }

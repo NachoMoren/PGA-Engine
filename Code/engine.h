@@ -492,3 +492,5 @@ void CameraDirection(Camera& cam);
 void DrawScene(App* app, u32 programIdx, GLuint fbo, Camera camera, WaterScenePart part);
 
 void PassWaterScene(App* app, Camera camera, GLuint fbo, WaterScenePart part);
+
+void RenderSkybox(App* app, Camera camera);

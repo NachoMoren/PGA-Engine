@@ -376,12 +376,14 @@
 	{
 		vec3 vPosition;
 		vec3 vNormal;
+		vec2 vTexCoord;
 	} VSOut;
 
 	void main()
 	{
 		VSOut.vPosition = vec3(uView * vec4(aPosition, 1.0));
 		VSOut.vNormal = vec3(uView * vec4(aNormal, 0.0));
+		VSOut.vTexCoord = aPosition.xz;
 		gl_Position = uProjection * vec4(VSOut.vPosition, 1.0);
 	}
 
@@ -403,6 +405,7 @@
 	{
 		vec3 vPosition;
 		vec3 vNormal;
+		vec2 vTexCoord;
 	} FSIn;
 
 	out vec4 oColor;
@@ -414,7 +417,7 @@
 
 	vec3 reconstructPixelPosition(float depth) {
 		vec2 texCoords = gl_FragCoord.xy/ uViewportSize;
-		vec3 positionNDC = vec3(texCoords * 2.0 - vec2(1.0), depth * 2.0 - 1.0);
+		vec3 positionNDC = vec3(FSIn.vTexCoord * 2.0 - vec2(1.0), depth * 2.0 - 1.0);
 		vec4 positionEyespace = uProjectionInverse * vec4(positionNDC, 1.0);
 		positionEyespace.xyz /= positionEyespace.w;
 		return positionEyespace.xyz;
@@ -433,8 +436,8 @@
 
 		vec2 distortion = (2.0 * texture(uDudvMap, Pw.xz / waveLength).rg - vec2(1.0)) * waveStrength + waveStrength/7.0;
 
-		vec2 reflectionTexCoord = vec2(texCoord.s, 1.0 - texCoord.t) + distortion;
-		vec2 refractionTexCoord = texCoord + distortion;
+		vec2 reflectionTexCoord = clamp(vec2(FSIn.vTexCoord.s, 1.0 - FSIn.vTexCoord.t) + distortion, 0.001, 0.999);
+		vec2 refractionTexCoord = clamp(FSIn.vTexCoord + distortion, 0.001, 0.999);
 		vec3 reflectionColor = texture(uReflectionMap, reflectionTexCoord).rgb;
 		vec3 refractionColor = texture(uRefractionMap, refractionTexCoord).rgb;
 
