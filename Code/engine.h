@@ -284,6 +284,7 @@ struct App
 	u32 blurProgramIdx;
 
     u32 patrickModel; 
+    u32 waterModel; 
 
     // Cubemap shader program
     u32 cubemapProgramIdx;
@@ -331,7 +332,18 @@ struct App
 	GLuint kernelRadius;
 	
     //Water effect uniforms
-    GLuint waterWVP; 
+    //GLuint waterWVP;
+    GLuint waterProgram_uView;
+    GLuint waterProgram_uProjection;
+    GLuint waterProgram_uProjectionInverse; 
+    GLuint waterProgram_uViewInverse;
+    GLuint waterProgram_viewportSize;
+    GLuint waterProgram_uReflectionMap;
+    GLuint waterProgram_uRefractionMap;
+    GLuint waterProgram_uReflectionDepth;
+    GLuint waterProgram_uRefractionDepth;
+    GLuint waterProgram_normalMap;
+    GLuint waterProgram_dudvMap;
 
 
 
@@ -364,7 +376,7 @@ struct App
 
     // Entity 
 	GLint maxUniformBufferSize;
-	GLint uniformBlockAlignment;
+    GLint uniformBlockAlignment;
 	Buffer localUniformBuffer;
 
     GLuint globalParamsOffset;
@@ -419,6 +431,11 @@ struct App
     // primitives
     std::vector<std::string> primitives = {"Cube", "Sphere","Cone", "Cylinder","Plane", "Torus" };
 	std::vector<u32> primitiveIdxs;
+
+    // Water transform
+	vec3 waterPos = vec3(0.0f, -1.0f, 0.0f);
+	vec3 waterRot = vec3(0.0f, 0.0f, 0.0f);
+	vec3 waterScale = vec3(40.0f, 1.0f, 40.0f);
 };
 
 void Init(App* app);

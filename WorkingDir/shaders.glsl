@@ -367,20 +367,58 @@
 	#if defined(VERTEX) ///////////////////////////////////////////////////
 
 	layout (location = 0) in vec3 aPosition;
+	layout (location = 1) in vec3 aNormal;
 
-	out vec2 TexCoord;
-	uniform mat4 worldViewProjection;
+	uniform mat4 uView;
+	uniform mat4 uProjection;
+
+	out Data
+	{
+		vec3 vPosition;
+		vec3 vNormal;
+	} VSOut;
 
 	void main()
 	{
-		TexCoord = vec2(aPosition.x / 2.0 + 0.5, aPosition.y / 2.0 + 0.5);
-		gl_Position = worldViewProjection * vec4(aPosition, 1.0);
+		VSOut.vPosition = vec3(uView * vec4(aPosition, 1.0));
+		VSOut.vNormal = vec3(uView * vec4(aNormal, 1.0));
+		gl_Position = uProjection * vec4(VSOut.vPosition, 1.0);
 	}
 
 	#elif defined(FRAGMENT) ///////////////////////////////////////////////
 
+	
+	uniform vec2 uViewportSize;
+	uniform mat4 uViewInverse; 
+	uniform mat4 uProjectionInverse;
+
+	uniform sampler2D uReflectionMap;
+	uniform sampler2D uRefractionMap;
+	uniform sampler2D uReflectionDepth;
+	uniform sampler2D uRefractionDepth;
+	uniform sampler2D uNormalMap;
+	uniform sampler2D uDudvMap;
+
+	in Data
+	{
+		vec3 vPosition;
+		vec3 vNormal;
+	} FSIn;
+
 	out vec4 oColor;
-	in vec2 TexCoord;
+
+	vec3 fresnelSchlick(float cosTheta, vec3 F0)
+	{
+		return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+	}
+
+	vec3 reconstructPixelPosition(float depth) {
+		vec2 texCoords = gl_FragCoord.xy/ uViewportSize;
+		vec3 positionNDC = vec3(texCoords * 2.0 - vec2(1.0), depth * 2.0 - 1.0);
+		vec4 positionEyespace = uProjectionInverse * vec4(positionNDC, 1.0);
+		positionEyespace.xyz /= positionEyespace.w;
+		return positionEyespace.xyz;
+	}
 
 	void main()
 	{

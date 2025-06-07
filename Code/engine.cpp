@@ -444,8 +444,17 @@ void Init(App* app)
     app->uSkyboxView = glGetUniformLocation(app->programs[app->cubemapProgramIdx].handle, "view");
 
 	app->waterProgramIdx = LoadProgram(app, "shaders.glsl", "WATER_EFFECT");
-	app->waterWVP = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "worldViewProjection");
-	
+	app->waterProgram_uView = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uView");
+	app->waterProgram_uProjection = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uProjection");
+	app->waterProgram_viewportSize = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uViewportSize");
+	app->waterProgram_uViewInverse = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uViewInverse");
+	app->waterProgram_uProjectionInverse = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uProjectionInverse");
+	app->waterProgram_uReflectionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uReflectionMap");
+	app->waterProgram_uReflectionDepth = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uReflectionDepth");
+	app->waterProgram_uRefractionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uRefractionMap");
+	app->waterProgram_uRefractionDepth = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uRefractionDepth");
+	app->waterProgram_normalMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uNormalMap");
+	app->waterProgram_dudvMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uDudvMap");
     app->mode = Mode_Deferred;
 }
 
@@ -988,7 +997,15 @@ void Gui(App* app)
 
 	
 
-	
+    if (ImGui::CollapsingHeader("Water Plane", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+		ImGui::Text("Position: ");
+		ImGui::DragFloat3("##Water Position", &app->waterPos[0], 0.5f, true);
+
+		ImGui::Text("Scale: ");
+		ImGui::DragFloat3("##Water Scale", &app->waterScale[0], 0.01f, 0.00001f, 10000.0f);
+    }
+
 	GuiInspectorCamera(app);
     GuiInspectorEntities(app);
 	GuiInspectorLights(app);
@@ -1134,11 +1151,12 @@ void Render(App* app)
 			Mesh& waterMesh = app->meshes[app->models[waterMeshIdx].meshIdx];
 			GLuint vao = FindVAO(waterMesh, 0, waterProgram);
 
-			glm::mat4 waterMatrix = TransformPositionRotationScale(glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0), glm::vec3(50.0));
-			waterMatrix = app->camera.projection * app->camera.view * waterMatrix;
+			glm::mat4 waterMatrix = TransformPositionRotationScale(app->waterPos, glm::vec3(0.0), app->waterScale);
+			waterMatrix = app->camera.view * waterMatrix;
 
 			glBindVertexArray(vao);
-            glUniformMatrix4fv(app->waterWVP, 1, GL_FALSE, &waterMatrix[0][0]);
+			glUniformMatrix4fv(app->waterProgram_uProjection, 1, GL_FALSE, &app->camera.projection[0][0]);
+            glUniformMatrix4fv(app->waterProgram_uView, 1, GL_FALSE, &waterMatrix[0][0]);
 
 			glDrawElements(GL_TRIANGLES, waterMesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
 			glBindVertexArray(0);
@@ -1202,20 +1220,6 @@ void Render(App* app)
             glDepthMask(GL_TRUE);
             glDepthFunc(GL_LESS);
             glUseProgram(0);
-
-            // Water effect pass
-			glBindFramebuffer(GL_FRAMEBUFFER, app->reflectionBuffer);
-			Camera reflectionCamera = app->camera;
-			reflectionCamera.position.y *= -1.0f; // Reflect the camera position for reflection
-			reflectionCamera.pitch *= -1.0f; // Reflect the camera pitch for reflection
-			CameraDirection(reflectionCamera);
-			reflectionCamera.view = glm::lookAt(reflectionCamera.position, reflectionCamera.position + reflectionCamera.front, reflectionCamera.up);
-
-			AlignUniformBuffers(app, reflectionCamera);
-
-            PassWaterScene(app, &reflectionCamera,GL_COLOR_ATTACHMENT0, REFLECTION);
-
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
             // Blur/Bloom
 			PassBlitBrightPixels(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->mainAttachmentTexture, app->valThreshold);
@@ -1330,12 +1334,12 @@ void AlignUniformBuffers(App* app , Camera cam, bool reflection)
     // Clipping plane as binding
 	BufferManagement::AlignHead(app->localUniformBuffer, app->uniformBlockAlignment);
 	app->clippingPlaneOffset = app->localUniformBuffer.head;
-
+	PushMat4(app->localUniformBuffer, cam.view);
 	if (reflection) {
-		PushVec4(app->localUniformBuffer, vec4(0.0f, 1.0f, 0.0f, 0.0f)); // Reflective plane
+		PushVec4(app->localUniformBuffer, vec4(0.0f, 1.0f, 0.0f, -app->waterPos.y)); // Reflective plane
 	}
 	else {
-		PushVec4(app->localUniformBuffer, vec4(0.0f, -1.0f, 0.0f, 1.0f)); // Refractive plane
+		PushVec4(app->localUniformBuffer, vec4(0.0f, -1.0f, 0.0f, app->waterPos.y)); // Refractive plane
 	}
 
 	app->clippingPlaneSize = app->localUniformBuffer.head - app->clippingPlaneOffset;
