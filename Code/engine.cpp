@@ -331,15 +331,15 @@ void Init(App* app)
 	pond.name = "Pond";
 	app->entities.push_back(pond);
 
-    // Load plane  
-	Entity plane;
-	plane.position = vec3(0.0f, 0.0f, 0.0f);
-	plane.rotation = vec3(0.0f, 0.0f, 0.0f);
-	plane.scale = vec3(20.0f, 1.0f, 20.0f);
-	plane.modelIndex = app->primitiveIdxs[4];
-	plane.worldMatrix = TransformPositionRotationScale(plane.position, plane.rotation, plane.scale);
-	plane.name = "Plane";
-	app->entities.push_back(plane);
+ //   // Load plane  
+	//Entity plane;
+	//plane.position = vec3(0.0f, 0.0f, 0.0f);
+	//plane.rotation = vec3(0.0f, 0.0f, 0.0f);
+	//plane.scale = vec3(20.0f, 1.0f, 20.0f);
+	//plane.modelIndex = app->primitiveIdxs[4];
+	//plane.worldMatrix = TransformPositionRotationScale(plane.position, plane.rotation, plane.scale);
+	//plane.name = "Plane";
+	//app->entities.push_back(plane);
 
 	// Load sphere
 	Entity sphere;
@@ -1157,6 +1157,32 @@ void Render(App* app)
 			glBindVertexArray(vao);
 			glUniformMatrix4fv(app->waterProgram_uProjection, 1, GL_FALSE, &app->camera.projection[0][0]);
             glUniformMatrix4fv(app->waterProgram_uView, 1, GL_FALSE, &waterMatrix[0][0]);
+			glUniform2f(app->waterProgram_viewportSize, app->displaySize.x, app->displaySize.y);
+			glUniformMatrix4fv(app->waterProgram_uViewInverse, 1, GL_FALSE, &glm::inverse(waterMatrix)[0][0]);
+			glUniformMatrix4fv(app->waterProgram_uProjectionInverse, 1, GL_FALSE, &glm::inverse(app->camera.projection)[0][0]);
+
+			// Bind textures
+			glUniform1i(app->waterProgram_uReflectionMap, 0);
+			glUniform1i(app->waterProgram_uReflectionDepth, 1);
+			glUniform1i(app->waterProgram_uRefractionMap, 2);
+			glUniform1i(app->waterProgram_uRefractionDepth, 3);
+			glUniform1i(app->waterProgram_normalMap, 4);
+			glUniform1i(app->waterProgram_dudvMap, 5);
+
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, app->rtReflection);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, app->rtReflectionDepth);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, app->rtRefraction);
+			glActiveTexture(GL_TEXTURE3);
+			glBindTexture(GL_TEXTURE_2D, app->rtRefractionDepth);
+			glActiveTexture(GL_TEXTURE4);
+			GLuint normalWaterHandle = app->textures[app->normalWaterTex].handle;
+            glBindTexture(GL_TEXTURE_2D, normalWaterHandle);
+			glActiveTexture(GL_TEXTURE5);
+			GLuint dudvWaterHandle = app->textures[app->dudvWaterTex].handle;
+			glBindTexture(GL_TEXTURE_2D, dudvWaterHandle);
 
 			glDrawElements(GL_TRIANGLES, waterMesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
 			glBindVertexArray(0);
@@ -1174,15 +1200,15 @@ void Render(App* app)
 
 			glBindVertexArray(app->vao);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-			glUniform1i(app->lightProgram_uAlbedo, 0);
-			glUniform1i(app->lightProgram_uPosition, 1);
-			glUniform1i(app->lightProgram_uNormal, 2);
+			glUniform1i(app->lightProgram_uAlbedo, 6);
+			glUniform1i(app->lightProgram_uPosition, 7);
+			glUniform1i(app->lightProgram_uNormal, 8);
 
-			glActiveTexture(GL_TEXTURE0);
+			glActiveTexture(GL_TEXTURE6);
             glBindTexture(GL_TEXTURE_2D, app->colorAttachmentTexture);
-			glActiveTexture(GL_TEXTURE1);
+			glActiveTexture(GL_TEXTURE7);
 			glBindTexture(GL_TEXTURE_2D, app->positionAttachmentTexture);
-			glActiveTexture(GL_TEXTURE2);
+			glActiveTexture(GL_TEXTURE8);
 			glBindTexture(GL_TEXTURE_2D, app->normalAttachmentTexture);
 
             //Bind uniforms
@@ -1334,7 +1360,7 @@ void AlignUniformBuffers(App* app , Camera cam, bool reflection)
     // Clipping plane as binding
 	BufferManagement::AlignHead(app->localUniformBuffer, app->uniformBlockAlignment);
 	app->clippingPlaneOffset = app->localUniformBuffer.head;
-	PushMat4(app->localUniformBuffer, cam.view);
+
 	if (reflection) {
 		PushVec4(app->localUniformBuffer, vec4(0.0f, 1.0f, 0.0f, -app->waterPos.y)); // Reflective plane
 	}
@@ -1590,9 +1616,8 @@ void DrawScene(App* app, u32 programIdx, GLuint fbo, Camera camera, WaterScenePa
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);

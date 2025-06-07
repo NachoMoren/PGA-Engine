@@ -63,7 +63,7 @@
 		vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
 		vNormal = vec3(uWorldMatrix * vec4(aNormal, 0.0));
 		
-		gl_ClipDistance[0] = dot(vec4(vPosition, 1.0), clippingPlane);
+		gl_ClipDistance[0] = dot(vec4(vPosition, 0.0), clippingPlane);
 
 		gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 	}
@@ -381,7 +381,7 @@
 	void main()
 	{
 		VSOut.vPosition = vec3(uView * vec4(aPosition, 1.0));
-		VSOut.vNormal = vec3(uView * vec4(aNormal, 1.0));
+		VSOut.vNormal = vec3(uView * vec4(aNormal, 0.0));
 		gl_Position = uProjection * vec4(VSOut.vPosition, 1.0);
 	}
 
@@ -422,7 +422,34 @@
 
 	void main()
 	{
-		oColor = vec4(0.0, 0.0, 1.0, 1.0);
+		vec3 N = normalize(FSIn.vNormal);
+		vec3 V = normalize(-FSIn.vPosition);
+		vec3 Pw = vec3(uViewInverse * vec4(FSIn.vPosition, 1.0));
+		vec2 texCoord = gl_FragCoord.xy / uViewportSize;
+
+		const vec2 waveLength = vec2(2.0);
+		const vec2 waveStrength = vec2(0.05);
+		const float turbidityDistance = 10.0;
+
+		//vec2 distortion = (2.0 * texture(uDudvMap, Pw.xz / waveLength).rg - vec2(1.0)) * waveStrength + waveStrength/7.0;
+
+		vec2 reflectionTexCoord = vec2(texCoord.s, 1.0 - texCoord.t);
+		vec2 refractionTexCoord = texCoord;
+		vec3 reflectionColor = texture(uReflectionMap, reflectionTexCoord).rgb;
+		vec3 refractionColor = texture(uRefractionMap, refractionTexCoord).rgb;
+
+		float distortedGroundDepth = texture(uRefractionDepth, refractionTexCoord).x;
+		vec3 distortedGroundPosViewspace  = reconstructPixelPosition(distortedGroundDepth);
+		float distortedWaterDepth = FSIn.vPosition.z - distortedGroundPosViewspace.z;
+		float tintFactor = clamp(distortedWaterDepth / turbidityDistance, 0.0, 1.0);
+		vec3 waterColor = vec3(0.25, 0.4, 0.6);
+		refractionColor = mix(refractionColor, waterColor, tintFactor);
+
+		vec3 F0 = vec3(0.1);
+		vec3 F = fresnelSchlick(max (0.0, dot(V, N)), F0);
+		oColor.rgb = mix(refractionColor, reflectionColor, F);
+		oColor.a = 1.0;
+
 	}
 
 	#endif
