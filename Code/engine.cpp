@@ -284,8 +284,8 @@ void Init(App* app)
 	app->blackTexIdx = LoadTexture2D(app, "color_black.png");
 	app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
 
-	app->normalWaterTex = LoadTexture2D(app, "Water/normalmap.dds");
-	app->dudvWaterTex = LoadTexture2D(app, "Water/dudvmap.dds");   
+	app->normalWaterTex = LoadTexture2D(app, "Water/normalmap.png");
+	app->dudvWaterTex = LoadTexture2D(app, "Water/dudvmap.png");   
 
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
