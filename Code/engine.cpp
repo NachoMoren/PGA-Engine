@@ -284,8 +284,8 @@ void Init(App* app)
 	app->blackTexIdx = LoadTexture2D(app, "color_black.png");
 	app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
 
-	app->normalWaterTex = LoadTexture2D(app, "Water/normalmap.dds");
-	app->dudvWaterTex = LoadTexture2D(app, "Water/dudvmap.dds");   
+	app->normalWaterTex = LoadTexture2D(app, "Water/normalmap.png");
+	app->dudvWaterTex = LoadTexture2D(app, "Water/dudvmap.png");   
 
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
@@ -612,7 +612,7 @@ void InitFramebuffers(App* app)
 
     // Water effect FBO
     glGenFramebuffers(1, &app->reflectionBuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, app->rtReflection);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->reflectionBuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->rtReflection, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->rtReflectionDepth, 0);
 
@@ -623,7 +623,7 @@ void InitFramebuffers(App* app)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     glGenFramebuffers(1, &app->refractionBuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, app->rtRefraction);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->refractionBuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->rtRefraction, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->rtRefractionDepth, 0);
 
