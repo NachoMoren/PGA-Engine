@@ -284,6 +284,9 @@ void Init(App* app)
 	app->blackTexIdx = LoadTexture2D(app, "color_black.png");
 	app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
 
+	app->normalWaterTex = LoadTexture2D(app, "Water/normalmap.dds");
+	app->dudvWaterTex = LoadTexture2D(app, "Water/dudvmap.dds");   
+
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
     app->localUniformBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
@@ -435,16 +438,23 @@ void Init(App* app)
     app->colorMapBlend = glGetUniformLocation(app->programs[app->bloomProgramIdx].handle, "uColorMap");
     app->maxLod = glGetUniformLocation(app->programs[app->bloomProgramIdx].handle, "uMaxLod");
 
-	app->waterProgramIdx = LoadProgram(app, "shaders.glsl", "WATER_EFFECT");
-	app->waterProgram_uView = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uView");
-	app->waterProgram_uClipPlane = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uClipPlane");
-	app->waterProgram_uProjection = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uProjection");
-    app->waterProgram_Worldspace = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uWorldspace");
-
     app->cubemapProgramIdx = LoadProgram(app, "CUBEMAP.glsl", "CUBEMAP");
     app->uSkybox = glGetUniformLocation(app->programs[app->cubemapProgramIdx].handle, "skybox");
     app->uSkyboxProjection = glGetUniformLocation(app->programs[app->cubemapProgramIdx].handle, "projection");
     app->uSkyboxView = glGetUniformLocation(app->programs[app->cubemapProgramIdx].handle, "view");
+
+	app->waterProgramIdx = LoadProgram(app, "shaders.glsl", "WATER_EFFECT");
+	app->waterProgram_uView = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uView");
+	app->waterProgram_uProjection = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uProjection");
+	app->waterProgram_uViewInverse = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uViewInverse");
+	app->waterProgram_viewportSize = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "viewportSize");
+	app->waterProgram_uReflectionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "reflectionMap");
+	app->waterProgram_uRefractionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "refractionMap");
+	app->waterProgram_uReflectionDepth = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "reflectionDepth");
+	app->waterProgram_uRefractionDepth = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "refractionDepth");
+	app->waterProgram_normalMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "normalMap");
+	app->waterProgram_dudvMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "dudvMap");
+	app->waterProgram_uClipPlane = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uClipPlane");
 	
     app->mode = Mode_Deferred;
 }
@@ -1276,6 +1286,10 @@ void Render(App* app)
 
 void PassWaterScene(App* app, Camera *camera, GLenum colorAttachment, WaterScenePart part) 
 {
+    glBindFramebuffer(GL_FRAMEBUFFER, app->reflectionBuffer);
+    glDrawBuffers(1, &colorAttachment);
+    glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CLIP_DISTANCE0);
 
@@ -1285,19 +1299,45 @@ void PassWaterScene(App* app, Camera *camera, GLenum colorAttachment, WaterScene
 	Program& waterProgram = app->programs[app->waterProgramIdx];
     glUseProgram(waterProgram.handle);
 
+
     glm::mat4 viewMatrix = camera->view; 
+    glUniform2f(app->waterProgram_viewportSize, app->displaySize.x, app->displaySize.y);
 	glUniformMatrix4fv(app->waterProgram_uView, 1, GL_FALSE, &viewMatrix[0][0]);
+	glUniformMatrix4fv(app->waterProgram_uViewInverse, 1, GL_FALSE, &glm::inverse(viewMatrix)[0][0]);
 	glUniformMatrix4fv(app->waterProgram_uProjection, 1, GL_FALSE, &camera->projection[0][0]);
-    glm::vec3 eyeWorldspace = glm::inverse(camera->view) * glm::vec4(0.0, 0.0, 0.0, 1.0);
-    glUniform3fv(app->waterProgram_Worldspace, 1, &eyeWorldspace[0]);
 
 	glm::vec4 clipPlane = vec4(0.0f, 1.0f, 0.0f, 0.0f); // Default clip plane
 	glm::vec4 clipPlaneReflection = vec4(0.0f, -1.0f, 0.0f, 0.0f);
 
     if(part == REFLECTION)
-		glUniform4fv(app->waterProgram_uClipPlane, 1, &clipPlane[0]);
+		glUniform4fv(app->waterProgram_uClipPlane, 1, glm::value_ptr(clipPlane));
     else
-		glUniform4fv(app->waterProgram_uClipPlane, 1, &clipPlaneReflection[0]);
+		glUniform4fv(app->waterProgram_uClipPlane, 1, glm::value_ptr(clipPlaneReflection));
+
+	glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, app->rtReflection); 
+	glUniform1i(app->waterProgram_uReflectionMap, 0);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, app->rtRefraction);
+	glUniform1i(app->waterProgram_uRefractionMap, 1);
+    glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, app->rtReflectionDepth);
+    glUniform1i(app->waterProgram_uReflectionDepth, 2);
+	glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, app->rtRefractionDepth);
+	glUniform1i(app->waterProgram_uRefractionDepth, 3);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, app->normalWaterTex);
+	glUniform1i(app->waterProgram_normalMap, 4);
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, app->dudvWaterTex);
+	glUniform1i(app->waterProgram_dudvMap, 5);
+
+    glBindVertexArray(app->vao);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+    glBindVertexArray(0);
 
 	glUseProgram(0);
     glDisable(GL_CLIP_DISTANCE0);
