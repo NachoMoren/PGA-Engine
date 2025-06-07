@@ -1203,20 +1203,6 @@ void Render(App* app)
             glDepthFunc(GL_LESS);
             glUseProgram(0);
 
-            // Water effect pass
-			glBindFramebuffer(GL_FRAMEBUFFER, app->reflectionBuffer);
-			Camera reflectionCamera = app->camera;
-			reflectionCamera.position.y *= -1.0f; // Reflect the camera position for reflection
-			reflectionCamera.pitch *= -1.0f; // Reflect the camera pitch for reflection
-			CameraDirection(reflectionCamera);
-			reflectionCamera.view = glm::lookAt(reflectionCamera.position, reflectionCamera.position + reflectionCamera.front, reflectionCamera.up);
-
-			AlignUniformBuffers(app, reflectionCamera);
-
-            PassWaterScene(app, &reflectionCamera,GL_COLOR_ATTACHMENT0, REFLECTION);
-
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
             // Blur/Bloom
 			PassBlitBrightPixels(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->mainAttachmentTexture, app->valThreshold);
 
