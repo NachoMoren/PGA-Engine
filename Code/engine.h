@@ -284,7 +284,6 @@ struct App
 	u32 blurProgramIdx;
 
     u32 patrickModel; 
-    u32 waterModel; 
 
     // Cubemap shader program
     u32 cubemapProgramIdx;
