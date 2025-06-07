@@ -320,16 +320,16 @@ void Init(App* app)
 	psyduck.name = "Psyduck";
 	app->entities.push_back(psyduck);
 
- //   // Pond scene
-	//u32 pondModel = ModelHelper::LoadModel(app, "Pond/Pond.obj");
-	//Entity pond;
-	//pond.position = vec3(0.0f, -22.0f, 0.0f);
-	//pond.rotation = vec3(0.0f, 0.0f, 0.0f);
-	//pond.scale = vec3(0.2f, 0.2f, 0.2f);
-	//pond.modelIndex = pondModel;
-	//pond.worldMatrix = TransformPositionRotationScale(pond.position, pond.rotation, pond.scale);
-	//pond.name = "Pond";
-	//app->entities.push_back(pond);
+    // Pond scene
+	u32 pondModel = ModelHelper::LoadModel(app, "Pond/Pond.obj");
+	Entity pond;
+	pond.position = vec3(0.0f, -22.0f, 0.0f);
+	pond.rotation = vec3(0.0f, 0.0f, 0.0f);
+	pond.scale = vec3(0.2f, 0.2f, 0.2f);
+	pond.modelIndex = pondModel;
+	pond.worldMatrix = TransformPositionRotationScale(pond.position, pond.rotation, pond.scale);
+	pond.name = "Pond";
+	app->entities.push_back(pond);
 
     // Load plane  
 	Entity plane;
@@ -392,7 +392,14 @@ void Init(App* app)
 	app->lights.push_back(Light(LightType_Point, vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(9.0f, 2.0f, -13.0f), 1.0f, "Point Light Init4"));
 	app->lights.push_back(Light(LightType_Point, vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(-13.0f, 2.0f, 15.0f), 1.0f, "Point Light Init 5"));
 
-
+    // Skybox VAOs
+    glGenVertexArrays(1, &app->skyboxVAO);
+    glGenBuffers(1, &app->skyboxVBO);
+    glBindVertexArray(app->skyboxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, app->skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
     // Load shaders
     // Forward program and uniforms
@@ -431,6 +438,11 @@ void Init(App* app)
     app->colorMapBlend = glGetUniformLocation(app->programs[app->bloomProgramIdx].handle, "uColorMap");
     app->maxLod = glGetUniformLocation(app->programs[app->bloomProgramIdx].handle, "uMaxLod");
 
+    app->cubemapProgramIdx = LoadProgram(app, "CUBEMAP.glsl", "CUBEMAP");
+    app->uSkybox = glGetUniformLocation(app->programs[app->cubemapProgramIdx].handle, "skybox");
+    app->uSkyboxProjection = glGetUniformLocation(app->programs[app->cubemapProgramIdx].handle, "projection");
+    app->uSkyboxView = glGetUniformLocation(app->programs[app->cubemapProgramIdx].handle, "view");
+
 	app->waterProgramIdx = LoadProgram(app, "shaders.glsl", "WATER_EFFECT");
 	app->waterWVP = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "worldViewProjection");
 	
@@ -460,7 +472,6 @@ void InitBuffers(App* app)
 	glEnableVertexAttribArray(1);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
 	glBindVertexArray(0);
-	
 }
 
 void InitFramebuffers(App* app)
@@ -494,6 +505,23 @@ void InitFramebuffers(App* app)
 
     GLuint drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
     glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glGenFramebuffers(1, &app->skyboxVBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->skyboxVBO);
+
+    // Cubemap texture
+    std::vector<std::string> faces
+    {
+        "Skybox/right.png",
+        "Skybox/left.png",
+        "Skybox/top.png",
+        "Skybox/bottom.png",
+        "Skybox/front.png",
+        "Skybox/back.png"
+    };
+    app->rtCubemap = LoadCubemap(faces);
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Final texture
@@ -594,7 +622,6 @@ void InitFramebuffers(App* app)
     GLuint drawRefractionBuffer[] = { GL_COLOR_ATTACHMENT0 };
     glDrawBuffers(ARRAY_COUNT(drawRefractionBuffer), drawRefractionBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-   
 
 	// Set default attachment
 	app->currentAttachment = "Main";
@@ -608,6 +635,7 @@ void InitFramebuffers(App* app)
 	app->renderSelector["Bright"] = app->rtBright;
 	app->renderSelector["Reflection"] = app->rtReflection;
 	app->renderSelector["Refraction"] = app->rtRefraction;
+	app->renderSelector["Cubemap"] = app->rtCubemap;
 }
 
 void InitBloomMipmap(App* app) 
@@ -649,6 +677,36 @@ void InitBloomMipmap(App* app)
     glTexImage2D(GL_TEXTURE_2D, 4, GL_RGBA16F, app->displaySize.x / 32, app->displaySize.y / 32, 0, GL_RGBA, GL_FLOAT, NULL);
 	//glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+unsigned int LoadCubemap(std::vector<std::string> faces)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            stbi_image_free(data);
+        }
+        else
+        {
+            ELOG("Cubemap texture failed to load at path: %s", faces[i]);
+            stbi_image_free(data);
+        }
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
 }
 
 void GenBloomFramebuffers(App* app) 
@@ -1120,6 +1178,45 @@ void Render(App* app)
 			glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.y, 0, 0, app->displaySize.x, app->displaySize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 			glUseProgram(0);
 
+            //Skybox pass
+            glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
+
+            glDepthMask(GL_FALSE);             // Disable depth writing
+            glEnable(GL_DEPTH_TEST);           // Still test depth
+            glDepthFunc(GL_LEQUAL);            // Allow equal depth to show background
+
+            Program& skyboxProgram = app->programs[app->cubemapProgramIdx];
+            glUseProgram(skyboxProgram.handle);
+            glm::mat4 view = glm::mat4(glm::mat3(app->camera.view)); // remove translation from the view matrix
+            glUniformMatrix4fv(app->uSkyboxView, 1, GL_FALSE, glm::value_ptr(view));
+            glUniformMatrix4fv(app->uSkyboxProjection, 1, GL_FALSE, &app->camera.projection[0][0]);
+            glUniform1i(app->uSkybox, 0);
+
+            // skybox cube
+            glBindVertexArray(app->skyboxVAO);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, app->rtCubemap);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glBindVertexArray(0);
+            
+            glDepthMask(GL_TRUE);
+            glDepthFunc(GL_LESS);
+            glUseProgram(0);
+
+            // Water effect pass
+			glBindFramebuffer(GL_FRAMEBUFFER, app->reflectionBuffer);
+			Camera reflectionCamera = app->camera;
+			reflectionCamera.position.y *= -1.0f; // Reflect the camera position for reflection
+			reflectionCamera.pitch *= -1.0f; // Reflect the camera pitch for reflection
+			CameraDirection(reflectionCamera);
+			reflectionCamera.view = glm::lookAt(reflectionCamera.position, reflectionCamera.position + reflectionCamera.front, reflectionCamera.up);
+
+			AlignUniformBuffers(app, reflectionCamera);
+
+            PassWaterScene(app, &reflectionCamera,GL_COLOR_ATTACHMENT0, REFLECTION);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
             // Blur/Bloom
 			PassBlitBrightPixels(app, app->fboBloom1, app->displaySize.x / 2, app->displaySize.y / 2, GL_COLOR_ATTACHMENT0, app->mainAttachmentTexture, app->valThreshold);
 
@@ -1188,6 +1285,8 @@ void Render(App* app)
 			glUseProgram(0);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
+
+        
         break; 
     }
 }
