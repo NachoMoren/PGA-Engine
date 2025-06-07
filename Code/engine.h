@@ -20,6 +20,7 @@ typedef glm::ivec4 ivec4;
 enum WaterScenePart {
     REFLECTION,
     REFRACTION,
+    NONE
 };
 
 struct Image
@@ -330,17 +331,7 @@ struct App
 	GLuint kernelRadius;
 	
     //Water effect uniforms
-    GLuint waterProgram_uView; 
-	GLuint waterProgram_uProjection;
-    GLuint waterProgram_uViewInverse; 
-    GLuint waterProgram_viewportSize; 
-	GLuint waterProgram_uReflectionMap;
-	GLuint waterProgram_uRefractionMap;
-	GLuint waterProgram_uReflectionDepth;
-	GLuint waterProgram_uRefractionDepth;
-	GLuint waterProgram_normalMap;
-    GLuint waterProgram_dudvMap; 
-    GLuint waterProgram_uClipPlane;
+    GLuint waterWVP; 
 
 
 
@@ -378,6 +369,8 @@ struct App
 
     GLuint globalParamsOffset;
 	GLuint globalParamsSize;
+    GLuint clippingPlaneSize;
+    GLuint clippingPlaneOffset;
     
 	// Framebuffers for deferred
     GLuint gBuffer;
@@ -458,9 +451,7 @@ u32 LoadTexture2D(App* app, const char* filepath);
 
 void InitCamera(App* app);
 
-void PassWaterScene(App* app, Camera* camera, GLenum colorAttachment, WaterScenePart part);
-
-void AlignUniformBuffers(App* app, Camera cam);
+void AlignUniformBuffers(App* app, Camera cam, bool reflection);
 
 void CameraMovement(App* app);
 
@@ -481,3 +472,7 @@ void GuiAddPrimitive(App* app);
 void GuiInspectorCamera(App* app);
 
 void CameraDirection(Camera& cam);
+
+void DrawScene(App* app, u32 programIdx, GLuint fbo, Camera camera, WaterScenePart part);
+
+void PassWaterScene(App* app, Camera camera, GLuint fbo, WaterScenePart part);
