@@ -482,7 +482,6 @@ void InitBuffers(App* app)
 	glEnableVertexAttribArray(1);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
 	glBindVertexArray(0);
-	
 }
 
 void InitFramebuffers(App* app)
@@ -518,6 +517,9 @@ void InitFramebuffers(App* app)
     glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    glGenFramebuffers(1, &app->skyboxVBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->skyboxVBO);
+
     // Cubemap texture
     std::vector<std::string> faces
     {
@@ -529,6 +531,8 @@ void InitFramebuffers(App* app)
         "Skybox/back.png"
     };
     app->rtCubemap = LoadCubemap(faces);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Final texture
 	app->mainAttachmentTexture = CreateTextureAttachment(GL_RGBA16F, GL_RGBA, GL_FLOAT, app->displaySize.x, app->displaySize.y);
@@ -702,7 +706,7 @@ unsigned int LoadCubemap(std::vector<std::string> faces)
         }
         else
         {
-            //std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+            ELOG("Cubemap texture failed to load at path: %s", faces[i]);
             stbi_image_free(data);
         }
     }
@@ -1108,10 +1112,10 @@ void Render(App* app)
         case Mode_Deferred:
         {
 			// Geometry Pass
-			glBindFramebuffer(GL_FRAMEBUFFER, app->gBuffer);
+            glBindFramebuffer(GL_FRAMEBUFFER, app->gBuffer);
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			glEnable(GL_DEPTH_TEST);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glEnable(GL_DEPTH_TEST);
 
 			Program& texturedMeshProgram = app->programs[app->texturedMeshProgramIdx];
 			glUseProgram(texturedMeshProgram.handle);
@@ -1178,9 +1182,32 @@ void Render(App* app)
 			glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.y, 0, 0, app->displaySize.x, app->displaySize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 			glUseProgram(0);
 
-            
-            // Water effect pass
+            //Skybox pass
+            glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
 
+            glDepthMask(GL_FALSE);             // Disable depth writing
+            glEnable(GL_DEPTH_TEST);           // Still test depth
+            glDepthFunc(GL_LEQUAL);            // Allow equal depth to show background
+
+            Program& skyboxProgram = app->programs[app->cubemapProgramIdx];
+            glUseProgram(skyboxProgram.handle);
+            glm::mat4 view = glm::mat4(glm::mat3(app->camera.view)); // remove translation from the view matrix
+            glUniformMatrix4fv(app->uSkyboxView, 1, GL_FALSE, glm::value_ptr(view));
+            glUniformMatrix4fv(app->uSkyboxProjection, 1, GL_FALSE, &app->camera.projection[0][0]);
+            glUniform1i(app->uSkybox, 0);
+
+            // skybox cube
+            glBindVertexArray(app->skyboxVAO);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, app->rtCubemap);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glBindVertexArray(0);
+            
+            glDepthMask(GL_TRUE);
+            glDepthFunc(GL_LESS);
+            glUseProgram(0);
+
+            // Water effect pass
 			glBindFramebuffer(GL_FRAMEBUFFER, app->reflectionBuffer);
 			Camera reflectionCamera = app->camera;
 			reflectionCamera.position.y *= -1.0f; // Reflect the camera position for reflection
@@ -1263,23 +1290,7 @@ void Render(App* app)
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
 
-        //Skybox
-        // draw skybox as last
-        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
-        Program& skyboxProgram = app->programs[app->cubemapProgramIdx];
-        glUseProgram(skyboxProgram.handle);
-        glm::mat4 view = glm::mat4(glm::mat3(app->camera.view)); // remove translation from the view matrix
-        glUniformMatrix4fv(app->uSkyboxView, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(app->uSkyboxProjection, 1, GL_FALSE, &app->camera.projection[0][0]);
-        glUniform1i(app->uSkybox, 0);
-
-        // skybox cube
-        glBindVertexArray(app->skyboxVAO);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, app->rtCubemap);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glBindVertexArray(0);
-        glDepthFunc(GL_LESS); // set depth function back to default
+        
         break; 
     }
 }
