@@ -200,6 +200,51 @@ struct Light
 };
 
 
+const float skyboxVertices[] = {
+    // positions          
+    -1.0f,  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+    -1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f
+};
+
 struct App
 {
     // Loop
@@ -238,6 +283,9 @@ struct App
 	u32 blurProgramIdx;
 
     u32 patrickModel; 
+
+    // Cubemap shader program
+    u32 cubemapProgramIdx;
     
     // texture indices
     u32 diceTexIdx;
@@ -304,6 +352,14 @@ struct App
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
 
+    GLuint skyboxVAO;
+    GLuint skyboxVBO;
+
+    //uiniforms
+    GLuint uSkybox;
+    GLuint uSkyboxView;
+    GLuint uSkyboxProjection;
+
     std::string openGLInfo;
 
     // Entity 
@@ -329,7 +385,8 @@ struct App
 	GLuint reflectionBuffer;
 	GLuint refractionBuffer;
 
-    
+    //CubeMap
+    GLuint rtCubemap;
 
     // Bloom mipmap
     GLuint rtBright; 
@@ -371,6 +428,8 @@ void InitBuffers(App* app);
 void InitOpenGLInfo(App* app);
 
 void InitBloomMipmap(App* app);
+
+unsigned int LoadCubemap(std::vector<std::string> faces);
 
 void GenBloomFramebuffers(App* app);
 

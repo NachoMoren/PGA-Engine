@@ -6,6 +6,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.11 0.11 0.11
 Ns 0.83
+map_Kd White.png
+
 newmtl Box027SG
 illum 4
 Kd 0.12 0.18 0.01
@@ -14,6 +16,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.17 0.17 0.17
 Ns 2.59
+map_Kd DarkGreen2.png
+
 newmtl Cone010SG
 illum 4
 Kd 0.11 0.20 0.10
@@ -22,6 +26,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.17 0.17 0.17
 Ns 2.59
+map_Kd DarkGreen.png
+
 newmtl Cone010SG1
 illum 4
 Kd 0.15 0.08 0.04
@@ -30,6 +36,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.11 0.11 0.11
 Ns 0.83
+map_Kd Brown.png
+
 newmtl GeoSphere018SG
 illum 4
 Kd 0.18 0.28 0.13
@@ -38,6 +46,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.17 0.17 0.17
 Ns 2.59
+map_Kd DarkGreen2.png
+
 newmtl GeoSphere019SG
 illum 4
 Kd 0.24 0.37 0.17
@@ -46,6 +56,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.17 0.17 0.17
 Ns 2.59
+map_Kd DarkGreen2.png
+
 newmtl GeoSphere019SG1
 illum 4
 Kd 0.15 0.12 0.08
@@ -54,6 +66,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.11 0.11 0.11
 Ns 0.83
+map_Kd Brown.png
+
 newmtl GeoSphere022SG
 illum 4
 Kd 0.23 0.24 0.22
@@ -62,6 +76,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.17 0.17 0.17
 Ns 2.59
+map_Kd Gray.png
+
 newmtl Plane040SG
 illum 4
 Kd 0.05 0.13 0.02
@@ -70,6 +86,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.17 0.17 0.17
 Ns 2.59
+map_Kd DarkGreen.png
+
 newmtl grassSG
 illum 4
 Kd 0.18 0.53 0.20
@@ -78,6 +96,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.17 0.17 0.17
 Ns 2.59
+map_Kd Green.png
+
 newmtl grassSG1
 illum 4
 Kd 0.16 0.12 0.06
@@ -86,6 +106,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.11 0.11 0.11
 Ns 0.83
+map_Kd White.png
+
 newmtl lakeSG
 illum 4
 Kd 0.09 0.13 0.62
@@ -94,6 +116,8 @@ Tf 0.45 0.45 0.45
 Ni 1.00
 Ks 0.69 0.69 0.69
 Ns 7.19
+map_Kd Blue.png
+
 newmtl lillySG
 illum 4
 Kd 1.00 1.00 0.68
@@ -102,6 +126,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.17 0.17 0.17
 Ns 2.59
+map_Kd DarkGreen.png
+
 newmtl lillySG1
 illum 4
 Kd 0.99 1.00 0.08
@@ -110,6 +136,8 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.17 0.17 0.17
 Ns 2.59
+map_Kd DarkGreen.png
+
 newmtl path7SG
 illum 4
 Kd 0.15 0.14 0.11
@@ -118,3 +146,4 @@ Tf 1.00 1.00 1.00
 Ni 1.00
 Ks 0.11 0.11 0.11
 Ns 0.83
+map_Kd Yellow.png
