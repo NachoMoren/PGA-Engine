@@ -343,7 +343,10 @@ struct App
     GLuint waterProgram_uRefractionDepth;
     GLuint waterProgram_normalMap;
     GLuint waterProgram_dudvMap;
+    GLuint waterProgram_moveFactor; 
 
+    float waterMoveSpeed = 0.03f; // Speed of water movement
+	float moveFactor = 0.0f; 
 
 
 	// Color attachment of the framebuffer

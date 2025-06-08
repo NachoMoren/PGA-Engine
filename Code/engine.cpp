@@ -455,6 +455,7 @@ void Init(App* app)
 	app->waterProgram_uRefractionDepth = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uRefractionDepth");
 	app->waterProgram_normalMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uNormalMap");
 	app->waterProgram_dudvMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uDudvMap");
+	app->waterProgram_moveFactor = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "moveFactor");
     app->mode = Mode_Deferred;
 }
 
@@ -1154,6 +1155,8 @@ void Render(App* app)
 
 			glm::mat4 waterMatrix = TransformPositionRotationScale(app->waterPos, glm::vec3(0.0), app->waterScale);
 			waterMatrix = app->camera.view * waterMatrix;
+			app->moveFactor += app->waterMoveSpeed * app->deltaTime;
+            app->moveFactor = std::fmod(app->moveFactor, 1.0f); // Keep moveFactor in range [0, 1]
 
 			glBindVertexArray(vao);
 			glUniformMatrix4fv(app->waterProgram_uProjection, 1, GL_FALSE, &app->camera.projection[0][0]);
@@ -1161,7 +1164,7 @@ void Render(App* app)
 			glUniform2f(app->waterProgram_viewportSize, app->displaySize.x, app->displaySize.y);
 			glUniformMatrix4fv(app->waterProgram_uViewInverse, 1, GL_FALSE, &glm::inverse(waterMatrix)[0][0]);
 			glUniformMatrix4fv(app->waterProgram_uProjectionInverse, 1, GL_FALSE, &glm::inverse(app->camera.projection)[0][0]);
-
+			glUniform1f(app->waterProgram_moveFactor, app->moveFactor);
 			// Bind textures
 			glUniform1i(app->waterProgram_uReflectionMap, 0);
 			glUniform1i(app->waterProgram_uReflectionDepth, 1);
