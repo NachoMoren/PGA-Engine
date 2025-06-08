@@ -438,6 +438,8 @@ struct App
 	vec3 waterPos = vec3(0.0f, -1.0f, 0.0f);
 	vec3 waterRot = vec3(0.0f, 0.0f, 0.0f);
 	vec3 waterScale = vec3(50.0f, 1.0f, 50.0f);
+
+	bool showDebugLights = true;
 };
 
 void Init(App* app);

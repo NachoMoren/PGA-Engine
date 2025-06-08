@@ -647,17 +647,14 @@ void InitFramebuffers(App* app)
 
 	// Set default attachment
 	app->currentAttachment = "Main";
-    app->renderSelector["BloomH"] = app->rtBloomH;
 	app->renderSelector["Color"] = app->colorAttachmentTexture;
-	app->renderSelector["Bloom"] = app->bloomAttachmentTexture;
+	app->renderSelector["WithoutBloom"] = app->mainAttachmentTexture;
 	app->renderSelector["Position"] = app->positionAttachmentTexture;
 	app->renderSelector["Normal"] = app->normalAttachmentTexture;
 	app->renderSelector["Depth"] = app->depthAttachmentTexture;
-	app->renderSelector["Main"] = app->mainAttachmentTexture;
-	app->renderSelector["Bright"] = app->rtBright;
+	app->renderSelector["Main"] = app->bloomAttachmentTexture;
 	app->renderSelector["Reflection"] = app->rtReflection;
 	app->renderSelector["Refraction"] = app->rtRefraction;
-	app->renderSelector["Cubemap"] = app->rtCubemap;
 }
 
 void InitBloomMipmap(App* app) 
@@ -994,6 +991,9 @@ void Gui(App* app)
         ImGui::Separator();
     }
 
+	ImGui::Checkbox("Show Debug Lights", &app->showDebugLights);
+    ImGui::Separator();
+
     ImGui::Text("Bloom Variables");
     ImGui::Text("Bloom Threshold");
     ImGui::SameLine();
@@ -1264,49 +1264,57 @@ void Render(App* app)
             PassBloom(app, app->bloomBuffer, GL_COLOR_ATTACHMENT0, app->rtBright, MIPMAP_MAX_LEVEL);
             
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
-			
-            // Show lights for debug
-            Program& debugLightProgram = app->programs[app->debugLightProgramIdx];
-			glUseProgram(debugLightProgram.handle);
-            for (int i = 0; i < app->lights.size(); ++i) {
-				Light& light = app->lights[i];
-				u32 meshIdx = 0;
-				float scale = 1.0f;
-                glm::mat4 modelMatrix; 
-                if (light.type == LightType_Directional) 
-                {
-					meshIdx = app->primitiveIdxs[2];    
-					scale = 0.5f;
-                    glm::vec3 coneDirection = glm::vec3(0.0f, 1.0f, 0.0f);
-                    glm::vec3 lightDirection = glm::normalize(light.direction);
-                    glm::vec3 rotationAxis = glm::normalize(glm::cross(lightDirection, coneDirection));
-                    float rotationAngle = acos(glm::dot(lightDirection, coneDirection));
-                    glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), rotationAngle, rotationAxis);
-                    modelMatrix = TransformPositionRotationScale(light.position, light.direction, vec3(scale));
-                    modelMatrix = rotationMatrix * modelMatrix;
-                }
-                else 
-                {
-                    scale = 0.5f;
-                    modelMatrix = TransformPositionRotationScale(light.position, light.direction, vec3(scale));
-					meshIdx = app->primitiveIdxs[1];
-					
-                }
-				Mesh& mesh = app->meshes[app->models[meshIdx].meshIdx];
-				GLuint vao = FindVAO(mesh, 0, debugLightProgram);
-                
-				
-				modelMatrix = app->camera.projection * app->camera.view * modelMatrix;
-				glBindVertexArray(vao);
-				glUniformMatrix4fv(app->uProjectionMatrix, 1, GL_FALSE, &modelMatrix[0][0]);
-				glUniform3f(app->uLightColor, light.color.r, light.color.g, light.color.b);
 
-				glDrawElements(GL_TRIANGLES, mesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
-				glBindVertexArray(0);
+            if (app->showDebugLights) {
+                if(app->currentAttachment == "Main")
+                    glBindFramebuffer(GL_FRAMEBUFFER, app->bloomBuffer);
+                else 
+					glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
+                
+
+                // Show lights for debug
+                Program& debugLightProgram = app->programs[app->debugLightProgramIdx];
+                glUseProgram(debugLightProgram.handle);
+                for (int i = 0; i < app->lights.size(); ++i) {
+                    Light& light = app->lights[i];
+                    u32 meshIdx = 0;
+                    float scale = 1.0f;
+                    glm::mat4 modelMatrix;
+                    if (light.type == LightType_Directional)
+                    {
+                        meshIdx = app->primitiveIdxs[2];
+                        scale = 0.5f;
+                        glm::vec3 coneDirection = glm::vec3(0.0f, 1.0f, 0.0f);
+                        glm::vec3 lightDirection = glm::normalize(light.direction);
+                        glm::vec3 rotationAxis = glm::normalize(glm::cross(lightDirection, coneDirection));
+                        float rotationAngle = acos(glm::dot(lightDirection, coneDirection));
+                        glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), rotationAngle, rotationAxis);
+                        modelMatrix = TransformPositionRotationScale(light.position, light.direction, vec3(scale));
+                        modelMatrix = rotationMatrix * modelMatrix;
+                    }
+                    else
+                    {
+                        scale = 0.5f;
+                        modelMatrix = TransformPositionRotationScale(light.position, light.direction, vec3(scale));
+                        meshIdx = app->primitiveIdxs[1];
+
+                    }
+                    Mesh& mesh = app->meshes[app->models[meshIdx].meshIdx];
+                    GLuint vao = FindVAO(mesh, 0, debugLightProgram);
+
+
+                    modelMatrix = app->camera.projection * app->camera.view * modelMatrix;
+                    glBindVertexArray(vao);
+                    glUniformMatrix4fv(app->uProjectionMatrix, 1, GL_FALSE, &modelMatrix[0][0]);
+                    glUniform3f(app->uLightColor, light.color.r, light.color.g, light.color.b);
+
+                    glDrawElements(GL_TRIANGLES, mesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
+                    glBindVertexArray(0);
+                }
+                glUseProgram(0);
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
             }
-			glUseProgram(0);
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			
         }
 
         
