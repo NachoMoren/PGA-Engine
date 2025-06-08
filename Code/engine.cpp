@@ -323,7 +323,7 @@ void Init(App* app)
 
     u32 pondModel = ModelHelper::LoadModel(app, "LowPolyTrees/LowPolyTrees.obj");
     Entity pond;
-    pond.position = vec3(0.0f, 4.0f, 0.0f);
+    pond.position = vec3(0.0f, 5.0f, 0.0f);
     pond.rotation = vec3(0.0f, 0.0f, 0.0f);
     pond.scale = vec3(15.0f, 15.0f, 15.0f);
     pond.modelIndex = pondModel;
