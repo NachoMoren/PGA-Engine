@@ -1,7 +1,7 @@
 # PGA-Engine 
 ### by Nacho Moreno & Biel Rubio
 
-![Main texture](GitHubResources/main_tex.png)
+![Main texture](GitHubResources/main_tex.PNG)
 
 ## Main features
 - Forward rendering
@@ -41,9 +41,9 @@ The camera have the same controls as Unity camera
 
 ## Gallery
 
-![Main texture](GitHubResources/main_tex.png)
-![NoBloom texture](GitHubResources/no_bloom_tex.png)
-![Color texture](GitHubResources/color_tex.png)
-![Normal texture](GitHubResources/normal_tex.png)
-![Depth texture](GitHubResources/depth_tex.png)
-![Position texture](GitHubResources/position_tex.png)
+![Main texture](GitHubResources/main_tex.PNG)
+![NoBloom texture](GitHubResources/no_bloom_tex.PNG)
+![Color texture](GitHubResources/color_tex.PNG)
+![Normal texture](GitHubResources/normal_tex.PNG)
+![Depth texture](GitHubResources/depth_tex.PNG)
+![Position texture](GitHubResources/position_tex.PNG)
