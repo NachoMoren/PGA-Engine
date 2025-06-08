@@ -1,0 +1,49 @@
+# Blender 4.0.2 MTL File: 'LowPolyTrees.blend'
+# www.blender.org
+
+newmtl Bark
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Textures/bark_willow_diff_2k.png
+map_Ns Textures/bark_willow_rough_2k.png
+map_Bump -bm 1.000000 Textures/bark_willow_nor_gl_2k.png
+
+newmtl G
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Textures/Wet_Soil_Base_Color.png
+map_Ns Textures/Wet_Soil_Roughness.png
+map_Bump -bm 1.000000 Textures/Wet_Soil_Normal_DirectX.png
+
+newmtl Grass_C
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.000000 0.031063 0.000284
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd Textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_Bump -bm 1.000000 Textures/Grass_Clumps_C_Normal.png
+
+newmtl Leaves
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.206201 0.800000 0.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+map_Kd Textures/Twig_Leaf_Long_Diffuse_C1-Twig_Leaf_Long_Opacity.png
+map_Bump -bm 1.000000 Textures/Twig_Leaf_Long_Normal.png

@@ -160,11 +160,12 @@ GLuint CreateTexture2DFromImage(Image image)
     glGenTextures(1, &texHandle);
     glBindTexture(GL_TEXTURE_2D, texHandle);
     glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, image.size.x, image.size.y, 0, dataFormat, dataType, image.pixels);
+    ELOG("LoadTexture2D() - Data format: %i", image.nchannels);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -320,8 +321,18 @@ void Init(App* app)
 	psyduck.name = "Psyduck";
 	app->entities.push_back(psyduck);
 
+    u32 pondModel = ModelHelper::LoadModel(app, "LowPolyTrees/LowPolyTrees.obj");
+    Entity pond;
+    pond.position = vec3(0.0f, 4.0f, 0.0f);
+    pond.rotation = vec3(0.0f, 0.0f, 0.0f);
+    pond.scale = vec3(15.0f, 15.0f, 15.0f);
+    pond.modelIndex = pondModel;
+    pond.worldMatrix = TransformPositionRotationScale(pond.position, pond.rotation, pond.scale);
+    pond.name = "Pond";
+    app->entities.push_back(pond);
+
     // Pond scene
-	u32 pondModel = ModelHelper::LoadModel(app, "Pond/Pond.obj");
+	/*u32 pondModel = ModelHelper::LoadModel(app, "Pond/Pond.obj");
 	Entity pond;
 	pond.position = vec3(0.0f, -22.0f, 0.0f);
 	pond.rotation = vec3(0.0f, 0.0f, 0.0f);
@@ -329,7 +340,7 @@ void Init(App* app)
 	pond.modelIndex = pondModel;
 	pond.worldMatrix = TransformPositionRotationScale(pond.position, pond.rotation, pond.scale);
 	pond.name = "Pond";
-	app->entities.push_back(pond);
+	app->entities.push_back(pond);*/
 
  //   // Load plane  
 	//Entity plane;
@@ -342,44 +353,44 @@ void Init(App* app)
 	//app->entities.push_back(plane);
 
 	// Load sphere
-	Entity sphere;
-	sphere.position = vec3(5.0f, 2.0f, -5.0f);
-	sphere.rotation = vec3(0.0f, 0.0f, 0.0f);
-	sphere.scale = vec3(3.0f, 3.0f, 3.0f);
-	sphere.modelIndex = app->primitiveIdxs[1];
-	sphere.worldMatrix = TransformPositionRotationScale(sphere.position, sphere.rotation, sphere.scale);
-	sphere.name = "Sphere";
-	app->entities.push_back(sphere);
-	
-    // Load cube
-	Entity cube;
-	cube.position = vec3(-5.0f, 1.0f, 5.0f);
-	cube.rotation = vec3(0.0f, 0.0f, 0.0f);
-	cube.scale = vec3(2.0f, 2.0f, 2.0f);
-	cube.modelIndex = app->primitiveIdxs[0];
-	cube.worldMatrix = TransformPositionRotationScale(cube.position, cube.rotation, cube.scale);
-	cube.name = "Cube";
-	app->entities.push_back(cube);
+	//Entity sphere;
+	//sphere.position = vec3(5.0f, 2.0f, -5.0f);
+	//sphere.rotation = vec3(0.0f, 0.0f, 0.0f);
+	//sphere.scale = vec3(3.0f, 3.0f, 3.0f);
+	//sphere.modelIndex = app->primitiveIdxs[1];
+	//sphere.worldMatrix = TransformPositionRotationScale(sphere.position, sphere.rotation, sphere.scale);
+	//sphere.name = "Sphere";
+	//app->entities.push_back(sphere);
+	//
+ //   // Load cube
+	//Entity cube;
+	//cube.position = vec3(-5.0f, 1.0f, 5.0f);
+	//cube.rotation = vec3(0.0f, 0.0f, 0.0f);
+	//cube.scale = vec3(2.0f, 2.0f, 2.0f);
+	//cube.modelIndex = app->primitiveIdxs[0];
+	//cube.worldMatrix = TransformPositionRotationScale(cube.position, cube.rotation, cube.scale);
+	//cube.name = "Cube";
+	//app->entities.push_back(cube);
 
-	// Load cone
-	Entity cone;
-	cone.position = vec3(7.0f, 1.0f, 5.0f);
-	cone.rotation = vec3(0.0f, 0.0f, 0.0f);
-	cone.scale = vec3(3.0f, 3.0f, 3.0f);
-	cone.modelIndex = app->primitiveIdxs[2];
-	cone.worldMatrix = TransformPositionRotationScale(cone.position, cone.rotation, cone.scale);
-	cone.name = "Cone";
-	app->entities.push_back(cone);
+	//// Load cone
+	//Entity cone;
+	//cone.position = vec3(7.0f, 1.0f, 5.0f);
+	//cone.rotation = vec3(0.0f, 0.0f, 0.0f);
+	//cone.scale = vec3(3.0f, 3.0f, 3.0f);
+	//cone.modelIndex = app->primitiveIdxs[2];
+	//cone.worldMatrix = TransformPositionRotationScale(cone.position, cone.rotation, cone.scale);
+	//cone.name = "Cone";
+	//app->entities.push_back(cone);
 
-	// Load torus
-	Entity torus;
-	torus.position = vec3(-7.0f, 1.0f, -8.0f);
-	torus.rotation = vec3(0.0f, 0.0f, 0.0f);
-	torus.scale = vec3(3.0f, 3.0f, 3.0f);
-	torus.modelIndex = app->primitiveIdxs[5];
-	torus.worldMatrix = TransformPositionRotationScale(torus.position, torus.rotation, torus.scale);
-	torus.name = "Torus";
-	app->entities.push_back(torus);
+	//// Load torus
+	//Entity torus;
+	//torus.position = vec3(-7.0f, 1.0f, -8.0f);
+	//torus.rotation = vec3(0.0f, 0.0f, 0.0f);
+	//torus.scale = vec3(3.0f, 3.0f, 3.0f);
+	//torus.modelIndex = app->primitiveIdxs[5];
+	//torus.worldMatrix = TransformPositionRotationScale(torus.position, torus.rotation, torus.scale);
+	//torus.name = "Torus";
+	//app->entities.push_back(torus);
 
     // Lights
     // Directional
@@ -521,14 +532,15 @@ void InitFramebuffers(App* app)
     glBindFramebuffer(GL_FRAMEBUFFER, app->skyboxVBO);
 
     // Cubemap texture
+    std::string skyboxStr = "Miramar";
     std::vector<std::string> faces
     {
-        "Skybox/right.png",
-        "Skybox/left.png",
-        "Skybox/top.png",
-        "Skybox/bottom.png",
-        "Skybox/front.png",
-        "Skybox/back.png"
+        "Skybox/" + skyboxStr + "/right.png",
+        "Skybox/" + skyboxStr + "/left.png",
+        "Skybox/" + skyboxStr + "/top.png",
+        "Skybox/" + skyboxStr + "/bottom.png",
+        "Skybox/" + skyboxStr + "/front.png",
+        "Skybox/" + skyboxStr + "/back.png"
     };
     app->rtCubemap = LoadCubemap(faces);
 
@@ -1602,6 +1614,7 @@ void DrawScene(App* app, u32 programIdx, GLuint fbo, Camera camera, WaterScenePa
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
 
 
     Program& texturedMeshProgram = app->programs[programIdx];

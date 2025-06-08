@@ -91,7 +91,11 @@
 
 	void main()
 	{
-		oColor = texture(uTexture, vTexCoord);
+		vec4 texColor = texture(uTexture, vTexCoord);
+		if(texColor.a < 0.1)
+			discard;
+		oColor = texColor;
+		//oColor = texture(uTexture, vTexCoord);
 		oPosition = vec4(vPosition, 1.0);
 		oNormal = vec4(normalize(vNormal), 1.0);
 
