@@ -440,6 +440,7 @@ struct App
 	vec3 waterScale = vec3(50.0f, 1.0f, 50.0f);
 
 	bool showDebugLights = false;
+	bool enableWaterPlane = true;
 };
 
 void Init(App* app);

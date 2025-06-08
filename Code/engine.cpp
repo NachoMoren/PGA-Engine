@@ -994,24 +994,26 @@ void Gui(App* app)
 	ImGui::Checkbox("Show Debug Lights", &app->showDebugLights);
     ImGui::Separator();
 
-    ImGui::Text("Bloom Variables");
-    ImGui::Text("Bloom Threshold");
-    ImGui::SameLine();
-	ImGui::SliderFloat("##Bloom Threshold", &app->valThreshold, 0.0f, 1.0f);
-	ImGui::Text("Kernel Radius");
-	ImGui::SameLine();
-	ImGui::InputInt("##Kernel Raduis", &app->kernelRad, 1, 72);
-    for (int i = 0; i < 5; ++i) {
-		ImGui::Text("LOD %d Intensity", i);
-		ImGui::SameLine();
-		ImGui::SliderFloat(("##LOD " + std::to_string(i) + " Intensity").c_str(), &app->intensities[i], 0.0f, 4.0f);
+    if (ImGui::CollapsingHeader("Bloom Variables", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Text("Bloom Threshold");
+        ImGui::SameLine();
+        ImGui::SliderFloat("##Bloom Threshold", &app->valThreshold, 0.0f, 1.0f);
+        ImGui::Text("Kernel Radius");
+        ImGui::SameLine();
+        ImGui::InputInt("##Kernel Raduis", &app->kernelRad, 1, 72);
+        for (int i = 0; i < 5; ++i) {
+            ImGui::Text("LOD %d Intensity", i);
+            ImGui::SameLine();
+            ImGui::SliderFloat(("##LOD " + std::to_string(i) + " Intensity").c_str(), &app->intensities[i], 0.0f, 4.0f);
+        }
     }
+   
 	ImGui::Separator();
 
 	
 
     if (ImGui::CollapsingHeader("Water Plane", ImGuiTreeNodeFlags_DefaultOpen)) {
-
+		ImGui::Checkbox("Enable Water Plane", &app->enableWaterPlane);
 		ImGui::Text("Position: ");
 		ImGui::DragFloat3("##Water Position", &app->waterPos[0], 0.5f, true);
 
@@ -1054,37 +1056,6 @@ void Render(App* app)
 
     switch (app->mode)
     {
-        // TODO: Draw your textured quad here!
-                // - clear the framebuffer
-                // - set the viewport
-                // - set the blending state
-                // - bind the texture into unit 0
-                // - bind the program 
-                //   (...and make its texture sample from unit 0)
-                // - bind the vao
-                // - glDrawElements() !!!
-        case Mode_TexturedQuad:
-        {
-
-            Program& texturedGeometryProgram = app->programs[app->texturedMeshProgramIdx];
-            glUseProgram(texturedGeometryProgram.handle);
-            glBindVertexArray(app->vao);
-
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-            glUniform1i(app->programUniformTexture, 0);
-            glActiveTexture(GL_TEXTURE0);
-            GLuint texHandle = app->textures[app->diceTexIdx].handle;
-            glBindTexture(GL_TEXTURE_2D, texHandle);
-
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-            glBindVertexArray(0);
-            glUseProgram(0);
-            break;
-        }
-			
         case Mode_Forward:
         {
             // Geometry Pass
@@ -1158,52 +1129,56 @@ void Render(App* app)
             DrawScene(app, app->texturedMeshProgramIdx, app->gBuffer, app->camera, WaterScenePart::NONE);
 
             // Render water
-			Program& waterProgram = app->programs[app->waterProgramIdx];
-			glUseProgram(waterProgram.handle);
+            if (app->enableWaterPlane) 
+            {
+                Program& waterProgram = app->programs[app->waterProgramIdx];
+                glUseProgram(waterProgram.handle);
 
-            u32 waterMeshIdx = app->primitiveIdxs[4];
-			Mesh& waterMesh = app->meshes[app->models[waterMeshIdx].meshIdx];
-			GLuint vao = FindVAO(waterMesh, 0, waterProgram);
+                u32 waterMeshIdx = app->primitiveIdxs[4];
+                Mesh& waterMesh = app->meshes[app->models[waterMeshIdx].meshIdx];
+                GLuint vao = FindVAO(waterMesh, 0, waterProgram);
 
-			glm::mat4 waterMatrix = TransformPositionRotationScale(app->waterPos, glm::vec3(0.0), app->waterScale);
-			waterMatrix = app->camera.view * waterMatrix;
-			app->moveFactor += app->waterMoveSpeed * app->deltaTime;
-            app->moveFactor = std::fmod(app->moveFactor, 1.0f); // Keep moveFactor in range [0, 1]
+                glm::mat4 waterMatrix = TransformPositionRotationScale(app->waterPos, glm::vec3(0.0), app->waterScale);
+                waterMatrix = app->camera.view * waterMatrix;
+                app->moveFactor += app->waterMoveSpeed * app->deltaTime;
+                app->moveFactor = std::fmod(app->moveFactor, 1.0f); // Keep moveFactor in range [0, 1]
 
-			glBindVertexArray(vao);
-			glUniformMatrix4fv(app->waterProgram_uProjection, 1, GL_FALSE, &app->camera.projection[0][0]);
-            glUniformMatrix4fv(app->waterProgram_uView, 1, GL_FALSE, &waterMatrix[0][0]);
-			glUniform2f(app->waterProgram_viewportSize, app->displaySize.x, app->displaySize.y);
-			glUniformMatrix4fv(app->waterProgram_uViewInverse, 1, GL_FALSE, &glm::inverse(waterMatrix)[0][0]);
-			glUniformMatrix4fv(app->waterProgram_uProjectionInverse, 1, GL_FALSE, &glm::inverse(app->camera.projection)[0][0]);
-			glUniform1f(app->waterProgram_moveFactor, app->moveFactor);
-			// Bind textures
-			glUniform1i(app->waterProgram_uReflectionMap, 0);
-			glUniform1i(app->waterProgram_uReflectionDepth, 1);
-			glUniform1i(app->waterProgram_uRefractionMap, 2);
-			glUniform1i(app->waterProgram_uRefractionDepth, 3);
-			glUniform1i(app->waterProgram_normalMap, 4);
-			glUniform1i(app->waterProgram_dudvMap, 5);
+                glBindVertexArray(vao);
+                glUniformMatrix4fv(app->waterProgram_uProjection, 1, GL_FALSE, &app->camera.projection[0][0]);
+                glUniformMatrix4fv(app->waterProgram_uView, 1, GL_FALSE, &waterMatrix[0][0]);
+                glUniform2f(app->waterProgram_viewportSize, app->displaySize.x, app->displaySize.y);
+                glUniformMatrix4fv(app->waterProgram_uViewInverse, 1, GL_FALSE, &glm::inverse(waterMatrix)[0][0]);
+                glUniformMatrix4fv(app->waterProgram_uProjectionInverse, 1, GL_FALSE, &glm::inverse(app->camera.projection)[0][0]);
+                glUniform1f(app->waterProgram_moveFactor, app->moveFactor);
+                // Bind textures
+                glUniform1i(app->waterProgram_uReflectionMap, 0);
+                glUniform1i(app->waterProgram_uReflectionDepth, 1);
+                glUniform1i(app->waterProgram_uRefractionMap, 2);
+                glUniform1i(app->waterProgram_uRefractionDepth, 3);
+                glUniform1i(app->waterProgram_normalMap, 4);
+                glUniform1i(app->waterProgram_dudvMap, 5);
 
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, app->rtReflection);
-			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D, app->rtReflectionDepth);
-			glActiveTexture(GL_TEXTURE2);
-			glBindTexture(GL_TEXTURE_2D, app->rtRefraction);
-			glActiveTexture(GL_TEXTURE3);
-			glBindTexture(GL_TEXTURE_2D, app->rtRefractionDepth);
-			glActiveTexture(GL_TEXTURE4);
-			GLuint normalWaterHandle = app->textures[app->normalWaterTex].handle;
-            glBindTexture(GL_TEXTURE_2D, normalWaterHandle);
-			glActiveTexture(GL_TEXTURE5);
-			GLuint dudvWaterHandle = app->textures[app->dudvWaterTex].handle;
-			glBindTexture(GL_TEXTURE_2D, dudvWaterHandle);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, app->rtReflection);
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, app->rtReflectionDepth);
+                glActiveTexture(GL_TEXTURE2);
+                glBindTexture(GL_TEXTURE_2D, app->rtRefraction);
+                glActiveTexture(GL_TEXTURE3);
+                glBindTexture(GL_TEXTURE_2D, app->rtRefractionDepth);
+                glActiveTexture(GL_TEXTURE4);
+                GLuint normalWaterHandle = app->textures[app->normalWaterTex].handle;
+                glBindTexture(GL_TEXTURE_2D, normalWaterHandle);
+                glActiveTexture(GL_TEXTURE5);
+                GLuint dudvWaterHandle = app->textures[app->dudvWaterTex].handle;
+                glBindTexture(GL_TEXTURE_2D, dudvWaterHandle);
 
-			glDrawElements(GL_TRIANGLES, waterMesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
-			glUseProgram(0);
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                glDrawElements(GL_TRIANGLES, waterMesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
+                glBindVertexArray(0);
+                glUseProgram(0);
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            }
+			
 
 			// Light Pass
 			glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
