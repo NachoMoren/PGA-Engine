@@ -1,13 +1,13 @@
 # PGA-Engine 
-###by Nacho Moreno & Biel Rubio
+### by Nacho Moreno & Biel Rubio
 
-##Main features
+## Main features
 - Forward rendering
 - Deferred rendering
 - Bloom Fx
 - Water Fx
 
-##Camera controls: 
+## Camera controls: 
 The camera have the same controls as Unity camera
 
 - WS used for zoom (camera front movement)
@@ -17,7 +17,7 @@ The camera have the same controls as Unity camera
 - With the mouse MIDDLE button you can scroll for zoom
 - With the mouse RIGHT button you can rotate the camera
 
-##Editor parameters:
+## Editor parameters:
 
 - Add primitive: Add a selected shape to the scene
 - Add light: Add a selected light to the scene
@@ -26,7 +26,7 @@ The camera have the same controls as Unity camera
 - Bloom variables: Modify the parameters for the bloom Fx
 - +Edit entities transform
 
-##Shaders
+## Shaders
 
 - Geometry Render (shaders.glsl)
 - Lighting Render (shaders.glsl)
@@ -37,5 +37,5 @@ The camera have the same controls as Unity camera
 - Water effect    (shaders.glsl)
 - Cubemap         (CUBEMAP.glsl)
 
-##Gallery
+## Gallery
 
